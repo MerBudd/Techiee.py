@@ -47,7 +47,7 @@ image_model = genai.GenerativeModel(model_name="gemini-pro-vision", generation_c
 
 # Initialize Discord Bot
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 @bot.event
 async def on_ready():
