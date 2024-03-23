@@ -29,7 +29,7 @@ with shelve.open('chatdata') as file:
 # Initialize Discord bot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix=[], intents=intents,help_command=None,activity=discord.Game('with your feelings'))
+bot = commands.Bot(command_prefix=[], intents=intents,help_command=None,activity=discord.Game('the role of the best AI chatbot!'))
 
 #On Message Function
 @bot.event
