@@ -19,8 +19,6 @@ message_history:Dict[int, genai.ChatSession] = {}
 tracked_threads = []
 
 with shelve.open('chatdata') as file:
-	if 'tracked_threads' in file:
-		tracked_threads = file['tracked_threads']
 	for key in file.keys():
 		if key.isnumeric():
 			message_history[int(key)] = text_model.start_chat(history=file[key])
