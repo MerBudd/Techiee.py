@@ -8,8 +8,7 @@ GOOGLE_AI_KEY = os.getenv('GOOGLE_AI_KEY')
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 
 tracked_channels = [
-	# channel_id_1,
-	# thread_id_2,
+	1208874114916425828,
 ]
 
 text_generation_config = {
