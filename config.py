@@ -15,7 +15,7 @@ text_generation_config = {
 	"temperature": 0.9,
 	"top_p": 1,
 	"top_k": 1,
-	"max_output_tokens": 1024,
+	"max_output_tokens": 512,
 }
 image_generation_config = {
 	"temperature": 0.4,
