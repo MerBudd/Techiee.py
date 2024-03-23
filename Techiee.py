@@ -9,6 +9,9 @@ from discord import app_commands
 from typing import Optional, Dict
 import shelve
 
+from keep_alive import keep_alive
+keep_alive()
+
 #---------------------------------------------AI Configuration-------------------------------------------------
 genai.configure(api_key=GOOGLE_AI_KEY)
 
