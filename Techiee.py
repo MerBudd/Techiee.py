@@ -116,7 +116,18 @@ async def generate_response_with_image_and_text(image_data, text):
 	return response.text
 
 @bot.tree.command(name='forget',description='Forget message history')
-await interaction.response.send_message("Message history for channel erased.")
+@app_commands.describe(persona='Persona of bot')
+async def forget(interaction:discord.Interaction,persona:Optional[str] = None):
+	try:
+		message_history.pop(interaction.channel_id)
+		if persona:
+			temp_template = bot_template.copy()
+			temp_template.append({'role':'user','parts': ["Forget what I said earlier! You are "+persona]})
+			temp_template.append({'role':'model','parts': ["Ok!"]})
+			message_history[interaction.channel_id] = text_model.start_chat(history=temp_template)
+	except Exception as e:
+		pass
+	await interaction.response.send_message("Message history for channel erased.")
 
 #---------------------------------------------Sending Messages-------------------------------------------------
 async def split_and_send_messages(message_system:discord.Message, text, max_length):
