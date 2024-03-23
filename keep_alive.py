@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return "Alive"
+    return "Webserver is on, bot should be alive and 24/7 should work."
 
 def run():
   app.run(host='0.0.0.0',port=8080)
