@@ -19,6 +19,8 @@ message_history:Dict[int, genai.ChatSession] = {}
 tracked_threads = []
 
 with shelve.open('chatdata') as file:
+	if 'tracked_threads' in file:
+		tracked_threads = file['tracked_threads']
 	for key in file.keys():
 		if key.isnumeric():
 			message_history[int(key)] = text_model.start_chat(history=file[key])
@@ -36,7 +38,7 @@ async def on_message(message:discord.Message):
 	if message.author == bot.user:
 		return
 	# Check if the bot is mentioned or the message is a DM
-	if not (bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels):
+	if not (bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads):
 		return
 	#Start Typing to seem like something happened
 	try:
@@ -128,6 +130,18 @@ async def forget(interaction:discord.Interaction,persona:Optional[str] = None):
 	except Exception as e:
 		pass
 	await interaction.response.send_message("Message history for channel erased.")
+
+@bot.tree.command(name='createthread',description='Create a thread in which bot will respond to every message.')
+@app_commands.describe(name='Thread name')
+async def create_thread(interaction:discord.Interaction,name:str):
+	try:
+		thread = await interaction.channel.create_thread(name=name,auto_archive_duration=60)
+		tracked_threads.append(thread.id)
+		await interaction.response.send_message(f"Thread {name} created!")
+		with shelve.open('chatdata') as file:	
+			file['tracked_threads'] = tracked_threads
+	except Exception as e:
+		await interaction.response.send_message("Error creating thread!")
 
 #---------------------------------------------Sending Messages-------------------------------------------------
 async def split_and_send_messages(message_system:discord.Message, text, max_length):
