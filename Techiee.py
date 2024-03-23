@@ -116,7 +116,7 @@ async def generate_response_with_image_and_text(image_data, text):
 	return response.text
 
 @bot.tree.command(name='forget',description='Forget message history')
-	await interaction.response.send_message("Message history for channel erased.")
+await interaction.response.send_message("Message history for channel erased.")
 
 #---------------------------------------------Sending Messages-------------------------------------------------
 async def split_and_send_messages(message_system:discord.Message, text, max_length):
