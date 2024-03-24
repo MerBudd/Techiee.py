@@ -131,18 +131,18 @@ async def generate_response_with_image_and_text(image_data, text):
 
 # --- Commands ---
 
-# /forget and /forget persona
+# /forget and /forget and_act_as_persona
 
 @bot.tree.command(name='forget',description='Forget message history')
-@app_commands.describe(persona='Persona of bot')
-async def forget(interaction:discord.Interaction,persona:Optional[str] = None):
+@app_commands.describe(and_act_as_persona='Forget the previous message history and make Techiee act as Persona')
+async def forget(interaction:discord.Interaction,and_act_as_persona:Optional[str] = None):
 	try:
 		message_history.pop(interaction.channel_id)
-		# The "persona" option (optional)
-		if persona:
+		# The "and_act_as_persona" option (optional)
+		if and_act_as_persona:
 			temp_template = bot_template.copy()
-			temp_template.append({'role':'user','parts': ["Forget what I said earlier! You are now "+persona]})
-			temp_template.append({'role':'model','parts': ["OK! I will now be "+persona]})
+			temp_template.append({'role':'user','parts': ["Forget what I said earlier! You are now "+and_act_as_persona]})
+			temp_template.append({'role':'model','parts': ["OK! I will now be "+and_act_as_persona]})
 			message_history[interaction.channel_id] = text_model.start_chat(history=temp_template)
 	except Exception as e:
 		pass
