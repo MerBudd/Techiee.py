@@ -127,8 +127,8 @@ async def forget(interaction:discord.Interaction,persona:Optional[str] = None):
 		message_history.pop(interaction.channel_id)
 		if persona:
 			temp_template = bot_template.copy()
-			temp_template.append({'role':'user','parts': ["Forget what I said earlier! You are "+persona]})
-			temp_template.append({'role':'model','parts': ["Ok!"]})
+			temp_template.append({'role':'user','parts': ["Forget what I said earlier! You are now "+persona]})
+			temp_template.append({'role':'model','parts': ["Ok! I will now be "+persona]})
 			message_history[interaction.channel_id] = text_model.start_chat(history=temp_template)
 	except Exception as e:
 		pass
