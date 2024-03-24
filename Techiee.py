@@ -73,13 +73,13 @@ async def on_message(message:discord.Message):
 								return
 			# If there isn't an image, use Gemini 1.0 Pro instead for text
 			else:
+				await message.add_reaction('💬')
 				print("FROM:" + str(message.author.name) + ": " + message.content)
 				query = f"@{message.author.name} said \"{message.clean_content}\""
 
 				# Fetch message that is being replied to
 				if message.reference is not None:
 					reply_message = await message.channel.fetch_message(message.reference.message_id)
-					await message.add_reaction('💬')
 					if reply_message.author.id != bot.user.id:
 						query = f"{query} while quoting @{reply_message.author.name} \"{reply_message.clean_content}\""
 
