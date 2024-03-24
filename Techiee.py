@@ -79,8 +79,8 @@ async def on_message(message:discord.Message):
 				# Fetch message that is being replied to
 				if message.reference is not None:
 					reply_message = await message.channel.fetch_message(message.reference.message_id)
+					await message.add_reaction('💬')
 					if reply_message.author.id != bot.user.id:
-						await message.add_reaction('💬')
 						query = f"{query} while quoting @{reply_message.author.name} \"{reply_message.clean_content}\""
 
 				response_text = await generate_response_with_text(message.channel.id, query)
