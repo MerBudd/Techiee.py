@@ -17,7 +17,7 @@ keep_alive()
 
 genai.configure(api_key=GOOGLE_AI_KEY)
 
-text_model = genai.GenerativeModel(model_name="gemini-pro", generation_config=text_generation_config, safety_settings=safety_settings)
+text_model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=text_generation_config, safety_settings=safety_settings)
 image_model = genai.GenerativeModel(model_name="gemini-pro-vision", generation_config=image_generation_config, safety_settings=safety_settings)
 
 message_history:Dict[int, genai.ChatSession] = {}
