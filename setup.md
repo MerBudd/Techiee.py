@@ -8,8 +8,6 @@ You need to put channel ID(s) in which Techiee will always check for the message
 
 You can use a hosting service like [Render](render.com) (which is free and works just fine). You can also host locally on your computer. If you host with Render, you can host 24/7.
 
-grab your web server URL, and then use the keep_alive.py file to run it 24/7 with UptimeRobot (you can find detailed tutorials online). We can't use Replit (at least, if you want to host it 24/7 for FREE) because they killed their webservers. You can pay Replit to get it running 24/7 with their new "Deployments" if you want.
-
 ## How to run locally
 - Clone this repo
 - Rename "[.env.example](https://github.com/MerBudd/Techiee.py/blob/main/.env.example)" to ".env"
