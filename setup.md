@@ -18,13 +18,12 @@ You can use a hosting service like [Render](render.com) (which is free and works
 - Fork this repo
 - Go to [Render](https://render.com/)
 - Sign up or log in
-- In the dashboard, click "New", then "Web service"
-- Click "Next"
+- In the dashboard, click "New", then "Web service". Then click "Next".
+- If your forked repo is private, connect your GitHub account to Render and click "Connect" on the repo. If it's public, you can simply search for it.
 - You can set the name to anything you want.
-- If your forked repo is private, connect your GitHub account to Render and choose it. If it's public, you can simply search for it.
 - In the "Start command" section, put "python Techiee.py" (without the quotes)
 - At the bottom, choose the free plan (it's more than enough to run Techiee)
-- athe the VERY bottom, in the Enivronment secrets section, create 2 new secrets called "GOOGLE_AI_KEY" and "DISCORD_BOT_TOKEN" (without the quotes), and set their values to your Google AI Studio API Key and your Bot's token respectively (I listed where to grab them at the very top of this file)
+- At the VERY bottom, in the Enivronment secrets section, create 2 new secrets called "GOOGLE_AI_KEY" and "DISCORD_BOT_TOKEN" (without the quotes), and set their values to your Google AI Studio API Key and your Bot's token respectively (Where to grab them is listed at the very top of this file)
 - Click "Create Web Service"
 
 ## Do 24/7 with Render
