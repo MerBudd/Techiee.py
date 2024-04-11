@@ -2,7 +2,7 @@
 
 All you'll need to do is to set the environment secrets for your [Google AI Studio API Key](https://aistudio.google.com/app/apikey) and your [Discord Bot Token](https://discord.com/developers/applications).
 
-You need to put channel ID(s) in which Techiee will always check for the messages and respond to them in [config.py](https://github.com/MerBudd/Techiee.py/edit/main/config.md)
+You need to put channel ID(s) in which Techiee will always check for the messages and respond to them in [config.py](https://github.com/MerBudd/Techiee.py/edit/main/config.py)
 
 ## !! WARNING: Techiee.py's config is currently set to Gemini *1.5* Pro! The API access for 1.5 isn't available to the public yet! If you don't have API access to 1.5 Pro, use 1.0 Pro instead!
 
