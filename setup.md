@@ -1,6 +1,8 @@
 # How to set Techiee up
 
-All you'll need to do is to set the environment secrets for the Discord Channel ID, your [Google AI Studio API Key](https://aistudio.google.com/app/apikey) and your [Discord Bot Token](https://discord.com/developers/applications).
+All you'll need to do is to set the environment secrets for your [Google AI Studio API Key](https://aistudio.google.com/app/apikey) and your [Discord Bot Token](https://discord.com/developers/applications).
+
+You need to put channel ID(s) in which Techiee will always check for the messages and respond to them there!
 
 You can use a hosting service like [Render](render.com) (which is free and works just fine). You can also host locally on your computer. If you host with Render, you can host 24/7.
 
