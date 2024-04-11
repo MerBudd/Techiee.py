@@ -1,4 +1,4 @@
-# <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="40" height="40" align=top> Techiee
+# <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="40" height="40" align=top> Techiee.py
 
 ## <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="30" height="30" align=top> Techiee is an experimental Discord AI Chatbot based on Google's Gemini Pro.
 
@@ -17,7 +17,10 @@ Techiee can be VERY random, but I love him for that...
 
 You can tweak settings like the safety settings, temperature, TopK etc. inside the [config.py](https://github.com/MerBudd/Techiee.py/blob/main/config.py) file.
 
-You can check out [setup.md](https://github.com/MerBudd/Techiee.py/blob/main/setup.md) for instructions to run it locally or with a hosting service (Render) and run it 24/7.
+You can check out [setup.md](https://github.com/MerBudd/Techiee.py/blob/main/setup.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
+
+!! WARNING: Techiee.py's config is currently set to Gemini *1.5* Pro! The aPI access for 1.5 isn't available to the public yet! If you don't have API access to 1.5 Pro, use 1.0 Pro instead!
+
 
 ## Techiee's Features
 
