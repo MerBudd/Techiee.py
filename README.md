@@ -17,10 +17,10 @@ Techiee can be VERY random, but I love him for that...
 
 You can tweak settings like the safety settings, temperature, TopK etc. inside the [config.py](https://github.com/MerBudd/Techiee.py/blob/main/config.py) file.
 
-You can check out [setup.md](https://github.com/MerBudd/Techiee.py/blob/main/setup.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
+You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SETUP.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
 
 
-## Techiee's Features
+## Techiee.py's Features
 
 ### Features done
 
