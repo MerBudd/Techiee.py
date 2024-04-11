@@ -28,7 +28,7 @@ You can use a hosting service like [Render](render.com) (which is free and works
 
 ## Do 24/7 with Render
 - Go to your newly created Web Service
-- At the top, click the copy icon next to the blue URL to copy it (it should look something like https://webservicename.onrender.com, for example, mine is https://techiee-py.onrender.com)
+- At the top, click the copy icon next to the blue URL to copy it (it should look something like https://webservicename.onrender.com)
 - Go to [UptimeRobot](https://uptimerobot.com) and sign up or log in
 - In the dashboard, click "New monitor"
 - Paste the URL you copied into the "URL to monitor" field (you can set the "friendly name" to anything you want)
