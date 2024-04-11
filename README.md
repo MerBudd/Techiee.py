@@ -19,8 +19,6 @@ You can tweak settings like the safety settings, temperature, TopK etc. inside t
 
 You can check out [setup.md](https://github.com/MerBudd/Techiee.py/blob/main/setup.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
 
-!! WARNING: Techiee.py's config is currently set to Gemini *1.5* Pro! The API access for 1.5 isn't available to the public yet! If you don't have API access to 1.5 Pro, use 1.0 Pro instead!
-
 
 ## Techiee's Features
 
@@ -30,6 +28,8 @@ You can check out [setup.md](https://github.com/MerBudd/Techiee.py/blob/main/set
 - 24/7
 - Message history/log
 - Ability to recognize, analyze and understand images
+- /createthread - Creates a thread in which Techiee will always check for & respond to messages
+- / forget - Makes Techiee forget the message history and start new. This command also has an optional argument, 'and-act-as-persona' which will make Techiee act as whatever you enter there.
 
 ### Features being worked on
 
