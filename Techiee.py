@@ -71,7 +71,7 @@ async def on_message(message:discord.Message):
 								# Split the message
 								await split_and_send_messages(message, response_text, 1950)
 								return
-			# If there isn't an image, use Gemini 1.0 Pro instead for text
+			# If there isn't an image, use Gemini Pro instead for text
 			else:
 				await message.add_reaction('💬')
 				print("FROM:" + str(message.author.name) + ": " + message.content)
