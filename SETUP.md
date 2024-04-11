@@ -10,7 +10,7 @@ You can use a hosting service like [Render](render.com) (which is free and works
 
 ## How to run locally
 - Clone this repo
-- Rename "[.env.example](https://github.com/MerBudd/Techiee.py/blob/main/.env.example)" to ".env"
+- Rename "[.env.example](https://github.com/MerBudd/Techiee.py/blob/main/.env.example)" to ".env" (without the quotes)
 - Put your tokens and keys in .env
 - Open a terminal in the directory where you cloned the repo to, and run "python Techiee.py" (without the quotes). Or, if you're fancy and use a code editor, you can open the Techiee.py file and just click "Run" (whereever that button may be in your editor)
 
