@@ -3,7 +3,7 @@ import dotenv
 from dotenv import load_dotenv
 load_dotenv()
 
-GOOGLE_AI_KEY = os.getenv('GOOGLE_AI_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 
 tracked_channels = [
