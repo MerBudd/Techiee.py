@@ -12,6 +12,7 @@ import shelve
 from keep_alive import keep_alive
 keep_alive()
 
+#hi
 
 # --- Gemini Configs ---
 
