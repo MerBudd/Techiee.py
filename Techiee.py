@@ -15,7 +15,7 @@ keep_alive()
 
 # --- Gemini Configs ---
 
-genai.configure(api_key=GOOGLE_AI_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
 
 text_model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=text_generation_config, safety_settings=safety_settings)
 image_model = genai.GenerativeModel(model_name="gemini-pro-vision", generation_config=image_generation_config, safety_settings=safety_settings)
