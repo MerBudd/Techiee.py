@@ -157,7 +157,7 @@ async def create_thread(interaction:discord.Interaction,name:str):
 	try:
 		thread = await interaction.channel.create_thread(name=name,auto_archive_duration=60)
 		tracked_threads.append(thread.id)
-		await interaction.response.send_message(f"Thread '{name}' created! Use Discord's Threads tab to join the Thread and chat with me there.")
+		await interaction.response.send_message(f"Thread '{name}' created! Go to https://discord.com/channels/910094591284367371/{thread.id} to join the Thread and chat with me there.")
 		with shelve.open('chatdata') as file:	
 			file['tracked_threads'] = tracked_threads
 	except Exception as e:
