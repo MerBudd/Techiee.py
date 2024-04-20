@@ -139,7 +139,7 @@ async def generate_response_with_image_and_text(image_data, text):
 @bot.tree.command(name='forget',description='Forget message history')
 @app_commands.describe(and_act_as_persona='Forget the previous message history and make Techiee act as Persona')
 async def forget(interaction:discord.Interaction,and_act_as_persona:Optional[str] = None):
-	await interaction.response.defer()
+	await interaction.response.defer(ephemeral=True)
 	try:
 		message_history.pop(interaction.channel_id)
 		# The "and_act_as_persona" option (optional)
@@ -150,8 +150,7 @@ async def forget(interaction:discord.Interaction,and_act_as_persona:Optional[str
 			message_history[interaction.channel_id] = text_model.start_chat(history=temp_template)
 	except Exception as e:
 		pass
-	await interaction.edit_original_response(content="🗑️ Message history for channel erased.")
-
+	await interaction.edit_original_response(content="🗑️ Message history for channel erased.", ephemeral=True)
 
 
 # /createthread
