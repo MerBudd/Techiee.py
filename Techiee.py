@@ -9,6 +9,9 @@ from discord import app_commands
 from typing import Optional, Dict
 import shelve
 
+from config import safety_settings
+from config import text_generation_config
+from config import image_generation_config
 from keep_alive import keep_alive
 keep_alive()
 
