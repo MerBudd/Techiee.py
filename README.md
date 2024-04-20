@@ -29,11 +29,12 @@ You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SET
 - Message history/log
 - Ability to recognize, analyze and understand images
 - /createthread - Creates a thread in which Techiee will always check for & respond to messages
-- / forget - Makes Techiee forget the message history and start new. This command also has an optional argument, 'and-act-as-persona' which will make Techiee act as whatever you enter there.
+- /forget - Makes Techiee forget the message history and start new. This command also has an optional argument, 'and-act-as-persona' which will make Techiee act as whatever you enter there.
+- Safety settings and other configurable settings
 
 ### Features being worked on
 
-- Safety settings (while the code IS there and it SHOULD theoretically work, it doesn't)
+- There currently aren't any features in our pipeline.
 
 ### Features to-do
 
