@@ -1,5 +1,7 @@
+# Import the necessary libraries and configs
+
 import discord
-import google.generativeai as genai
+import google.generativeai
 from discord.ext import commands
 import aiohttp
 import re
@@ -9,21 +11,20 @@ from discord import app_commands
 from typing import Optional, Dict
 import shelve
 
-from config import safety_settings
-from config import text_generation_config
-from config import image_generation_config
+# Keep bot running 24/7
+
 from keep_alive import keep_alive
 keep_alive()
 
 
 # --- Gemini Configs ---
 
-genai.configure(api_key=GEMINI_API_KEY)
+google.generativeai.configure(api_key=GEMINI_API_KEY)
 
-text_model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=text_generation_config, safety_settings=safety_settings)
-image_model = genai.GenerativeModel(model_name="gemini-pro-vision", generation_config=image_generation_config, safety_settings=safety_settings)
+text_model = google.generativeai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=text_generation_config, safety_settings=safety_settings)
+image_model = google.generativeai.GenerativeModel(model_name="gemini-pro-vision", generation_config=image_generation_config, safety_settings=safety_settings)
 
-message_history:Dict[int, genai.ChatSession] = {}
+message_history:Dict[int, google.generativeai.ChatSession] = {}
 tracked_threads = []
 
 with shelve.open('chatdata') as file:
@@ -192,8 +193,13 @@ def format_discord_message(input_string):
 
 @bot.event
 async def on_ready():
+	# Synchronize the slash commands with Discord.
 	await bot.tree.sync()
+	
+	# Print a message to the console indicating that the bot has logged in.
 	print("----------------------------------------")
 	print(f'Bot Logged in as {bot.user}')
 	print("----------------------------------------")
+
+# Run the bot using the provided Discord bot token.
 bot.run(DISCORD_BOT_TOKEN)
