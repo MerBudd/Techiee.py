@@ -19,25 +19,42 @@ keep_alive()
 
 # --- Gemini Configs ---
 
+# Set API key for Google Gnerative AI API
 google.generativeai.configure(api_key=GEMINI_API_KEY)
 
-text_model = google.generativeai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=text_generation_config, safety_settings=safety_settings)
-image_model = google.generativeai.GenerativeModel(model_name="gemini-pro-vision", generation_config=image_generation_config, safety_settings=safety_settings)
+# Text generation configs
+text_model = google.generativeai.GenerativeModel(
+    model_name="gemini-1.5-pro-latest",
+    generation_config=text_generation_config,
+    safety_settings=safety_settings
+)
 
+# Configs for analyzing images and creating responses for images
+image_model = google.generativeai.GenerativeModel(
+    model_name="gemini-pro-vision",
+    generation_config=image_generation_config,
+    safety_settings=safety_settings
+)
+
+# Initialize the message history and tracked threads
 message_history:Dict[int, google.generativeai.ChatSession] = {}
 tracked_threads = []
 
+# Load the chat data from the shelve file
 with shelve.open('chatdata') as file:
-	if 'tracked_threads' in file:
-		tracked_threads = file['tracked_threads']
-	for key in file.keys():
-		if key.isnumeric():
-			message_history[int(key)] = text_model.start_chat(history=file[key])
+    # Load the tracked threads
+    if 'tracked_threads' in file:
+        tracked_threads = file['tracked_threads']
+
+    # Load the message history
+    for key in file.keys():
+        if key.isnumeric():
+            message_history[int(key)] = text_model.start_chat(history=file[key])
 
 
 # --- Bot Code and Configs ---
 
-# Initialize Discord Bot
+# Set intents and initialize Discord Bot
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=[], intents=intents,help_command=None,activity = discord.Activity(type=discord.ActivityType.listening, name="your every command and being the best Discord chatbot!"))
@@ -47,13 +64,13 @@ bot = commands.Bot(command_prefix=[], intents=intents,help_command=None,activity
 
 @bot.event
 async def on_message(message:discord.Message):
-	# Ignore messages sent by Techiee
+	# Ignore messages sent by Techiee itself
 	if message.author == bot.user:
 		return
-	# Check if the bot is mentioned or the message is a DM
+	# Check if the message is in one of the tracked channels, threads or if the message is a DM
 	if not (isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads):
 		return
-	# Start typing
+	# Start typing to indicate that the bot is processing the message
 	try:
 		async with message.channel.typing():
 			# Check for image attachments (and if there is, use Gemini Vision)
@@ -63,6 +80,7 @@ async def on_message(message:discord.Message):
 				for attachment in message.attachments:
 					# Specify allowed image extensions
 					if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
+						# Add reaction
 						await message.add_reaction('🎨')
 						
 						async with aiohttp.ClientSession() as session:
@@ -72,30 +90,32 @@ async def on_message(message:discord.Message):
 									return
 								image_data = await resp.read()
 								response_text = await generate_response_with_image_and_text(image_data, message.content)
-								# Split the message
+								# Split the message into multiple chunks if it exceeds the character limit
 								await split_and_send_messages(message, response_text, 1950)
 								return
 			# If there isn't an image, use Gemini Pro instead for text
 			else:
+				# Add reaction
 				await message.add_reaction('💬')
 				print("FROM:" + str(message.author.name) + ": " + message.content)
 				query = f"@{message.author.name} said \"{message.clean_content}\""
 
-				# Fetch message that is being replied to
+				# Reply to the message and send the output
 				if message.reference is not None:
 					reply_message = await message.channel.fetch_message(message.reference.message_id)
 					if reply_message.author.id != bot.user.id:
 						query = f"{query} while quoting @{reply_message.author.name} \"{reply_message.clean_content}\""
 
 				response_text = await generate_response_with_text(message.channel.id, query)
-				# Split the message
+				# Split the message into multiple chunks if it exceeds the character limit
 				await split_and_send_messages(message, response_text, 1950)
 				with shelve.open('chatdata') as file:
 					file[str(message.channel.id)] = message_history[message.channel.id].history
 				return
+	# Print any errors to log and indicate that an error occured in Discord
 	except Exception as e:
 		traceback.print_exc()
-		await message.reply(':warning: Some error has occurred, please check logs!')
+		await message.reply(':warning: An error has occurred, please check logs!')
 
 
 # --- Message History ---	   
@@ -154,8 +174,6 @@ async def forget(interaction:discord.Interaction,and_act_as_persona:Optional[str
 	await interaction.edit_original_response(content="🗑️ Message history for channel erased.")
 
 
-
-
 # /createthread
 
 @bot.tree.command(name='createthread',description='Create a thread in which bot will respond to every message.')
@@ -169,6 +187,7 @@ async def create_thread(interaction:discord.Interaction,name:str):
 			file['tracked_threads'] = tracked_threads
 	except Exception as e:
 		await interaction.response.send_message("❗️ Error creating thread!")
+
 
 # --- Sending Messages ---
 
