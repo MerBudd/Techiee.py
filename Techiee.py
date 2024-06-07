@@ -11,6 +11,7 @@ from config import image_generation_config
 from config import safety_settings
 from config import bot_template
 from config import tracked_channels
+from config import *
 from discord import app_commands
 from typing import Optional, Dict
 import shelve
