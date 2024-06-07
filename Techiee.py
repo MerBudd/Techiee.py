@@ -62,7 +62,7 @@ with shelve.open('chatdata') as file:
 # Set intents and initialize Discord Bot
 
 intents = discord.Intents.all()
-bot = commands.Bot(intents=intents,activity = discord.Activity(type=discord.ActivityType.listening, name="your every command and being the best Discord chatbot!"))
+bot = commands.Bot(intents=intents,command_prefix=[],activity = discord.Activity(type=discord.ActivityType.listening, name="your every command and being the best Discord chatbot!"))
 
 
 # On Message
