@@ -6,7 +6,11 @@ from discord.ext import commands
 import aiohttp
 import re
 import traceback
-from config import *
+from config import text_generation_config
+from config import image_generation_config
+from config import safety_settings
+from config import bot_template
+from config import tracked_channels
 from discord import app_commands
 from typing import Optional, Dict
 import shelve
@@ -57,15 +61,15 @@ with shelve.open('chatdata') as file:
 # Set intents and initialize Discord Bot
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=[], intents=intents,help_command=None,activity = discord.Activity(type=discord.ActivityType.listening, name="your every command and being the best Discord chatbot!"))
+bot = commands.Bot(intents=intents,activity = discord.Activity(type=discord.ActivityType.listening, name="your every command and being the best Discord chatbot!"))
 
 
 # On Message
 
 @bot.event
 async def on_message(message:discord.Message):
-	# Ignore messages sent by Techiee itself
-	if message.author == bot.user:
+	# Ignore messages sent by Techiee itself and other bots
+	if message.author == client.user:
 		return
 	# Check if the message is in one of the tracked channels, threads or if the message is a DM
 	if not (isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads):
@@ -80,9 +84,6 @@ async def on_message(message:discord.Message):
 				for attachment in message.attachments:
 					# Specify allowed image extensions
 					if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
-						# Add reaction
-						await message.add_reaction('🎨')
-						
 						async with aiohttp.ClientSession() as session:
 							async with session.get(attachment.url) as resp:
 								if resp.status != 200:
@@ -95,8 +96,6 @@ async def on_message(message:discord.Message):
 								return
 			# If there isn't an image, use Gemini Pro instead for text
 			else:
-				# Add reaction
-				await message.add_reaction('💬')
 				print("FROM:" + str(message.author.name) + ": " + message.content)
 				query = f"@{message.author.name} said \"{message.clean_content}\""
 
