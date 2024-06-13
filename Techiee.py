@@ -34,7 +34,7 @@ text_model = google.generativeai.GenerativeModel(
 
 # Configs for analyzing images and creating responses for images
 image_model = google.generativeai.GenerativeModel(
-    model_name="gemini-pro-vision",
+    model_name="gemini-1.5-flash",
     generation_config=image_generation_config,
     safety_settings=safety_settings
 )
