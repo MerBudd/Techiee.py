@@ -1,5 +1,13 @@
 aiohttp
-python-dotenv
-discord
+discord.py
 google-generativeai
+python-dotenv
+youtube-transcript-api
+discord.py
+google-generativeai
+aiohttp
+PyMuPDF
+requests
+beautifulsoup4
+python-dotenv
 flask
