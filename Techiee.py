@@ -8,6 +8,7 @@ import re
 import os
 import fitz
 import asyncio
+import flask
 
 # Keep bot running 24/7
 
@@ -50,7 +51,7 @@ safety_settings = [
 ]
 
 gemini_system_prompt = "You are Techiee, an experimental chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models."
-gemini_model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
+gemini_model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
 
 tracked_channels = [
 	1208874114916425828,
