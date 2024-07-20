@@ -378,17 +378,18 @@ async def process_pdf(pdf_data,prompt):
 @bot.tree.command(name='forget',description='Forget message history')
 @app_commands.describe(and_act_as_persona='Forget the previous message history and make Techiee act as Persona')
 async def forget(interaction:discord.Interaction,and_act_as_persona:Optional[str] = None):
-        if message.author.id in message_history:
-            del message_history[message.author.id]
-        await message.channel.send("🧼 History Reset for user: " + str(message.author.name))
-	# The "and_act_as_persona" option (optional)
-	if and_act_as_persona:
-		temp_template = bot_template.copy()
-		message_history.append("Forget what I said earlier! You are now "+and_act_as_persona)
-		message_history[interaction.channel_id] = text_model.start_chat(history=message_history)
-	except Exception as e:
-		pass
-	await interaction.edit_original_response(content="🗑️ Message history for channel erased.")
+    if message.author.id in message_history:
+        del message_history[message.author.id]
+    await message.channel.send("🧼 History Reset for user: " + str(message.author.name))
+    # The "and_act_as_persona" option (optional)
+    if and_act_as_persona:
+        temp_template = bot_template.copy()
+        message_history.append("Forget what I said earlier! You are now "+and_act_as_persona)
+        message_history[interaction.channel_id] = text_model.start_chat(history=message_history)
+    pass
+    await interaction.edit_original_response(content="🗑️ Message history for channel erased.")
+
+
 
 
 # /createthread
