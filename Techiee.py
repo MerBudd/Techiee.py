@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 import google.generativeai as genai
 from discord.ext import commands
 from pathlib import Path
@@ -66,7 +67,12 @@ async def on_ready():
     print("----------------------------------------")
     print(f'Techiee logged in as {bot.user}')
     print("----------------------------------------")
-    
+    try:
+        synced = await bot.tree.sync
+        print(f"Synced {len(synced)} commands"))
+    except Exception as e:
+        print(e)
+
 @bot.event
 async def on_message(message):
     # Start the coroutine
