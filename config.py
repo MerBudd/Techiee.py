@@ -1,13 +1,14 @@
+# Dependencies
 import os
+import google.generativeai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import dotenv
 from dotenv import load_dotenv
 load_dotenv()
-import google.generativeai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # Environment variables
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+gemini_api_key = os.getenv('GEMINI_API_KEY')
+discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
 # Name of the Gemini model. Currently, the Gemini 1.5 Pro API is only in limited access, so use gemini-1.5-flash if you don't have access
 gemini_model = "gemini-1.5-pro-latest"

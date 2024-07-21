@@ -5,19 +5,19 @@ First, grab your [Google AI Studio API Key](https://aistudio.google.com/app/apik
 You can put channel ID(s) in which Techiee will always check for the messages and respond to them in [config.py](https://github.com/MerBudd/Techiee.py/edit/main/config.py). Otherwise, pinging Techiee, DMing Techiee or using `/createthread` will also work.
 
 > [!WARNING]
-> Techiee.py's config is currently set to Gemini *1.5* Pro! The API access for 1.5 isn't available to the public yet! If you don't have API access to 1.5 Pro, use 1.0 Pro instead!
+> Techiee.py's config is currently set to Gemini 1.5 Pro! The API access for 1.5 Pro isn't available to the public yet! If you don't have API access to 1.5 Pro, use other models instead! (Gemini 1.5 Flash recommended)
 
 You can use a hosting service like [Render](render.com) (which is free and works just fine). You can also host locally on your computer. If you host with Render, you can host 24/7.
 
 ## How to run locally
-- Please make sure that you have [git](https://git-scm.com/downloads) and [Python](https://python.org/downloads) installed on your computer before proceeding!
-1. Clone this repo, by opening a Terminal/Command Prompt by doing:
+- Make sure that you have [git](https://git-scm.com/downloads) and [Python](https://python.org/downloads) installed on your computer before proceeding!
+1. Clone this repo, by opening a Terminal/Command Prompt and doing:
    ```bash
    git clone https://github.com/MerBudd/Techiee.py.git
    cd Techiee.py
    ```
 2. Rename "[.env.example](https://github.com/MerBudd/Techiee.py/blob/main/.env.example)" to `.env`
-3. Open `.env` and put your Google AI Studio API Key, your bot's token, and channel ID in `.env`, then save.
+3. Open `.env` and put your Google AI Studio API Key, along with your bot's token in there, then save
 4. To install dependencies, do:
    ```
    pip install -U -r requirements.txt
@@ -31,7 +31,7 @@ You can use a hosting service like [Render](render.com) (which is free and works
 1. Fork this repo
 2. Go to [Render](https://render.com/)
 3. Sign up or log in
-4. In the dashboard, click "New", then "Web service". Then click "Next".
+4. In the dashboard, click "New", then "Web service". Then click "Next"
 5. If your forked repo is private, connect your GitHub account to Render and click "Connect" on the repo. If it's public, you can simply search for it
 6. Set the name to anything you want
 7. In the "Build command" section, put `pip install -U -r requirements.txt` and in the "Start command" section, put `python Techiee.py`

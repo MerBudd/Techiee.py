@@ -5,11 +5,17 @@ from discord.ext import commands
 from pathlib import Path
 import aiohttp
 import re
-import os
 import fitz
 import asyncio
 import flask
 from config import *
+
+GEMINI_API_KEY = gemini_api_key
+DISCORD_BOT_TOKEN = discord_bot_token
+MAX_HISTORY = max_history
+
+message_history = {}
+tracked_threads = {}
 
 # Keep bot running 24/7
 
@@ -19,15 +25,6 @@ keep_alive()
 # Web Scraping
 import requests
 from bs4 import BeautifulSoup
-from dotenv import load_dotenv
-
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-MAX_HISTORY = max_history
-
-message_history = {}
-tracked_threads = {}
 
 #show_debugs = False
 
@@ -38,9 +35,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 gemini_model = genai.GenerativeModel(model_name=gemini_model, generation_config=generation_config, safety_settings=safety_settings,system_instruction=system_instruction)
 
-tracked_channels = [
-	1208874114916425828,
-]
+tracked_channels = tracked_channels
 
 # --- Discord Code ---
 
