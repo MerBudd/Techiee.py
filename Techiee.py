@@ -9,6 +9,7 @@ import os
 import fitz
 import asyncio
 import flask
+from config import *
 
 # Keep bot running 24/7
 
@@ -23,41 +24,26 @@ from dotenv import load_dotenv
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-MAX_HISTORY = 30
-
-# Default summary prompt if the message is just a URL and nothing else
-SUMMARIZE_PROMPT = "Summarize the following by giving me 5 bullet points"
+MAX_HISTORY = max_history
 
 message_history = {}
 tracked_threads = {}
+
 #show_debugs = False
 
 # --- Gemini Configs ---
 
 # Configure the generative AI model
 genai.configure(api_key=GEMINI_API_KEY)
-text_generation_config = {
-    "temperature": 0.9,
-    "top_p": 1,
-    "top_k": 1,
-    "max_output_tokens": 2048,
-}
 
-safety_settings = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-]
-
-gemini_system_prompt = "You are Techiee, an experimental chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models."
-gemini_model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=text_generation_config, safety_settings=safety_settings,system_instruction=gemini_system_prompt)
+gemini_model = genai.GenerativeModel(model_name=gemini_model, generation_config=generation_config, safety_settings=safety_settings,system_instruction=system_instruction)
 
 tracked_channels = [
 	1208874114916425828,
 ]
 
-#--- Discord Code ---
+# --- Discord Code ---
+
 # Initialize Discord bot
 defaultIntents = discord.Intents.all()
 defaultIntents.message_content = True
@@ -210,9 +196,9 @@ def clean_discord_message(input_string):
 async def ProcessURL(message_str):
     pre_prompt = remove_url(message_str)
     if pre_prompt == "":
-        pre_prompt = SUMMARIZE_PROMPT   
+        pre_prompt = default_url_prompt   
     if is_youtube_url(extract_url(message_str)):
-        print("Processing Youtube Transcript")   
+        print("Processing YouTube Transcript")   
         return await generate_response_with_text(pre_prompt + " " + get_FromVideoID(get_video_id(extract_url(message_str))))     
     if extract_url(message_str):       
         print("Processing Standards Link")       
@@ -341,7 +327,7 @@ def get_FromVideoID(video_id):
 
 async def ProcessAttachments(message,prompt):
     if prompt == "":
-        prompt = SUMMARIZE_PROMPT  
+        prompt = default_url_prompt  
     for attachment in message.attachments:
         await message.add_reaction('📄')
         async with aiohttp.ClientSession() as session:
@@ -385,16 +371,9 @@ async def process_pdf(pdf_data,prompt):
 @bot.tree.command(name='forget',description='Forget message history')
 @app_commands.describe(and_act_as_persona='Forget the previous message history and make Techiee act as Persona')
 async def forget(interaction: discord.Interaction, and_act_as_persona: str = None):
-    if message.author.id in message_history:
         del message_history[message.author.id]
-    await message.channel.send("🧼 History Reset for user: " + str(message.author.name))
-    # The "and_act_as_persona" option (optional)
-    if and_act_as_persona:
-        temp_template = bot_template.copy()
-        message_history.append("Forget what I said earlier! You are now "+and_act_as_persona)
-        message_history[interaction.channel_id] = text_model.start_chat(history=message_history)
-    pass
-    await interaction.edit_original_response(content="🗑️ Message history for channel erased.")
+        await message.channel.send("🧼 History Reset for user: " + str(message.author.name))
+        pass
 
 # /createthread
 
