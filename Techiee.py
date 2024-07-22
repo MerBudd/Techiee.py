@@ -15,7 +15,7 @@ DISCORD_BOT_TOKEN = discord_bot_token
 MAX_HISTORY = max_history
 
 message_history = {}
-tracked_threads = {}
+tracked_threads = []
 
 # Keep bot running 24/7
 
@@ -95,6 +95,13 @@ async def process_message(message):
             # Not an Image, check for text responses
             else:
                 print(f"New Message Message FROM: {message.author.name} : {cleaned_text}")
+                # Check for Reset or Clean keyword
+                if "RESET HISTORY" in cleaned_text or "CLEAN HISTORY" in cleaned_text:
+                    # End back message
+                    if message.author.id in message_history:
+                        del message_history[message.author.id]
+                    await message.channel.send("🧼 History Reset for user: " + str(message.author.name))
+                    return
                 # Check for URLs
                 if extract_url(cleaned_text) is not None:
                     await message.add_reaction('🔗')
@@ -361,19 +368,9 @@ async def process_pdf(pdf_data,prompt):
 
 # --- Commands ---
 
-# /forget and /forget and_act_as_persona
-
-@bot.tree.command(name='forget',description='Forget message history')
-@app_commands.describe(and_act_as_persona='Forget the previous message history and make Techiee act as Persona')
-async def forget(interaction: discord.Interaction, and_act_as_persona: str = None):
-        del message_history[message.author.id]
-        await message.channel.send("🧼 History Reset for user: " + str(message.author.name))
-        pass
-
 # /createthread
 
-@bot.tree.command(name='createthread',description='Create a thread in which bot will respond to every message.')
-@app_commands.describe(name='Thread name')
+@bot.tree.command(name='help',description='Help command.')
 async def create_thread(interaction:discord.Interaction,name:str):
 	try:
 		thread = await interaction.channel.create_thread(name=name,auto_archive_duration=60)
@@ -381,6 +378,10 @@ async def create_thread(interaction:discord.Interaction,name:str):
 		await interaction.response.send_message(f"Thread '{name}' created! Go to <#{thread.id}> to join the thread and chat with me there.")
 	except Exception as e:
 		await interaction.response.send_message("❗️ Error creating thread!")
+
+@bot.tree.command(name='createthread',description='Create a thread in which bot will respond to every message.')
+async def help(ctx):
+    await ctx.send("test, help message not done yet")
 
 # --- Run Bot ---
 bot.run(DISCORD_BOT_TOKEN)
