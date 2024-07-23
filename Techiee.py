@@ -46,14 +46,8 @@ bot = commands.Bot(command_prefix="!", intents=defaultIntents,help_command=None,
 
 @bot.event
 async def on_ready():
-    print("----------------------------------------")
     print(f'Techiee logged in as {bot.user}')
-    print("----------------------------------------")
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} commands")
-    except Exception as e:
-        print(e)
+    await bot.tree.sync()
 
 @bot.event
 async def on_message(message):
