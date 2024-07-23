@@ -1,8 +1,5 @@
 # Dependencies
 import os
-import google.generativeai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-import dotenv
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -42,3 +39,6 @@ default_url_prompt = "Summarize the following by giving me 5 bullet points"
 
 # The maximum amount of messages to be saved in the message history before the oldest message gets deleted, set to 0 to disable message history
 max_history = 30
+
+# Your Discord User ID, used for the /sync command
+discord_user_id = 622137576836431882

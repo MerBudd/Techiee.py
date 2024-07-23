@@ -47,7 +47,7 @@ bot = commands.Bot(command_prefix="!", intents=defaultIntents,help_command=None,
 @bot.event
 async def on_ready():
     print(f'Techiee logged in as {bot.user}')
-    await bot.tree.sync()
+    await bot.tree.sync(guild=discord.Object(id=910094591284367371))
 
 @bot.event
 async def on_message(message):
@@ -374,8 +374,16 @@ async def create_thread(interaction:discord.Interaction,name:str):
 		await interaction.response.send_message("❗️ Error creating thread!")
 
 @bot.tree.command(name='help',description='Help command.')
-async def help(ctx):
+async def help(ctx: commands.Context):
     await ctx.send("test, help message not done yet")
+
+@bot.tree.command(name='sync', description='Sync the slash commands, available to the owner only.')
+async def sync(interaction: discord.Interaction):
+    if interaction.user.id == discord_user_id:
+        await bot.tree.sync()
+        print('Command tree synced.')
+    else:
+        await interaction.response.send_message('You must be the owner to use this command!')
 
 # --- Run Bot ---
 bot.run(DISCORD_BOT_TOKEN)
