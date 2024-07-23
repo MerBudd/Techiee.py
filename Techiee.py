@@ -50,7 +50,7 @@ async def on_ready():
     print(f'Techiee logged in as {bot.user}')
     print("----------------------------------------")
     try:
-        synced = await bot.tree.sync
+        synced = await bot.tree.sync()
         print(f"Synced {len(synced)} commands")
     except Exception as e:
         print(e)
@@ -370,7 +370,7 @@ async def process_pdf(pdf_data,prompt):
 
 # /createthread
 
-@bot.tree.command(name='help',description='Help command.')
+@bot.tree.command(name='createthread',description='Create a thread in which bot will respond to every message.')
 async def create_thread(interaction:discord.Interaction,name:str):
 	try:
 		thread = await interaction.channel.create_thread(name=name,auto_archive_duration=60)
@@ -379,7 +379,7 @@ async def create_thread(interaction:discord.Interaction,name:str):
 	except Exception as e:
 		await interaction.response.send_message("❗️ Error creating thread!")
 
-@bot.tree.command(name='createthread',description='Create a thread in which bot will respond to every message.')
+@bot.tree.command(name='help',description='Help command.')
 async def help(ctx):
     await ctx.send("test, help message not done yet")
 
