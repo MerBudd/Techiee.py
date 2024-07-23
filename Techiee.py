@@ -375,7 +375,7 @@ async def create_thread(interaction:discord.Interaction,name:str):
 
 @bot.tree.command(name='help',description='Help command.')
 async def help(ctx: commands.Context):
-    await ctx.send("test, help message not done yet")
+    await ctx.response.send_message("test, help message not done yet")
 
 @bot.tree.command(name='sync', description='Sync the slash commands, available to the owner only.')
 async def sync(interaction: discord.Interaction):
