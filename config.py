@@ -42,3 +42,24 @@ max_history = 30
 
 # Your Discord User ID, used for the /sync command
 discord_user_id = 622137576836431882
+
+# Help text, for the /help command
+help_text = """
+# <:techiee:1209133042250162258> Techiee Help <:techiee:1209133042250162258>
+
+## Here are some things I can do:
+
+* **Chat with me:** Ask me questions, tell me stories, and let's have a conversation!
+* **Summarize text:** Paste a URL or a block of text, and I'll give you a summary.
+* **Process images:** Send me an image, and I'll try to understand it and tell you what I see.
+* **Process PDFs:** Send me a PDF file, and I'll extract the text and summarize it.
+* **Create a thread:** Use the `/createthread` command to create a dedicated thread where I'll respond to every message.
+
+**Commands:**
+
+* `/help`: Shows this help message.
+* `/createthread <name>`: Creates a new thread with the given name, where I'll respond to every message.
+* `/sync`: Syncs the slash commands (owner only).
+
+**Note:** I'm still under development, so I might not always get things right. 
+"""
