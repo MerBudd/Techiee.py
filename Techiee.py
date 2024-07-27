@@ -90,7 +90,7 @@ async def process_message(message):
             else:
                 print(f"New Message Message FROM: {message.author.name} : {cleaned_text}")
                 # Check for Reset or Clean keyword
-                if "RESET HISTORY" in cleaned_text or "CLEAN HISTORY" in cleaned_text:
+                if "RESET HISTORY" in cleaned_text or "CLEAR HISTORY" in cleaned_text or "CLEAN HISTORY" in cleaned_text:
                     # End back message
                     if message.author.id in message_history:
                         del message_history[message.author.id]
