@@ -378,9 +378,9 @@ async def help(ctx: commands.Context):
     await ctx.response.send_message(help_text)
 
 @bot.tree.command(name='sync', description='Sync the slash commands, available to the owner only.')
-async def sync(interaction:discord.Interaction):
+async def sync(interaction:discord.Interaction, ctx: commands.Context):
     if interaction.user.id == discord_user_id:
-        await bot.tree.sync()
+        await bot.tree.sync(guild= ctx.guild)
         print('Command tree synced.')
         await interaction.response.send_message('Command tree synced.')
     else:
