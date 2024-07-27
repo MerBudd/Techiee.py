@@ -71,7 +71,6 @@ async def process_message(message):
                     # these are the only image extensions it currently accepts
                     if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
                         print("Processing Image")
-                        await message.add_reaction('🎨')
                         async with aiohttp.ClientSession() as session:
                             async with session.get(attachment.url) as resp:
                                 if resp.status != 200:
@@ -97,13 +96,11 @@ async def process_message(message):
                     return
                 # Check for URLs
                 if extract_url(cleaned_text) is not None:
-                    await message.add_reaction('🔗')
                     print(f"Got URL: {extract_url(cleaned_text)}")
                     response_text = await ProcessURL(cleaned_text)
                     await split_and_send_messages(message, response_text, 1900)
                     return
                 # Check if history is disabled, if so, send response
-                await message.add_reaction('💬')
                 if MAX_HISTORY == 0:
                     response_text = await generate_response_with_text(cleaned_text)
                     # Add AI response to history
@@ -324,7 +321,6 @@ async def ProcessAttachments(message,prompt):
     if prompt == "":
         prompt = default_pdf_and_txt_prompt  
     for attachment in message.attachments:
-        await message.add_reaction('📄')
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
                 if resp.status != 200:

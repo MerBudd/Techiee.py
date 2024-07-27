@@ -54,7 +54,7 @@ help_text = """
 # <:techiee:1266720186799751261> Techiee Help <:techiee:1266720186799751261>
 
 Hello, I'm Techiee! An experimental chatbot, right on Discord. I was made by two Discord users, Tech (@techgamerexpert) and Budd (@merbudd). They built me on Google's Gemini models.
--# (Also, don't tell Discord, but I'm waaay better than Clyde, who is this fella: <:clyde:1266719391014453278>. He got shut down, while I'm still standing!)
+-# Also, don't tell Discord, but I'm waaay better than Clyde (this fella: <:clyde:1266719391014453278>). He got shut down, while I'm still standing!
 
 ## Here are some things I can do:
 
