@@ -373,12 +373,12 @@ async def create_thread(interaction:discord.Interaction,name:str):
 	except Exception as e:
 		await interaction.response.send_message("❗️ Error creating thread!")
 
-@bot.tree.command(name='help',description='Help command.')
+@bot.tree.command(name='help',description='Shows help(ful) info and commands for Techiee.')
 async def help(ctx: commands.Context):
     await ctx.response.send_message(help_text)
 
 @bot.tree.command(name='sync', description='Sync the slash commands, available to the owner only.')
-async def sync(interaction: discord.Interaction):
+async def sync(ctx: commands.Context, interaction: discord.Interaction):
     if interaction.user.id == discord_user_id:
         await bot.tree.sync()
         await ctx.response.send_message("Command tree synced.")
