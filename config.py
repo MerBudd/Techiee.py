@@ -27,15 +27,21 @@ safety_settings = [
 ]
 
 # System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it etc. It will never forget this, unlike the message histroy which has a limit you can set
-system_instruction = "You are Techiee, an experimental chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models."
+system_instruction = """
+You are Techiee, an experimental chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
+You are currently chatting in a Discord server, called TechFriends.
+"""
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
 tracked_channels = [
 	1208874114916425828,
 ]
 
-# Default summary prompt if the message is just a URL and nothing else
+# Default prompt if the message is just a URL, just a PDF file / text file, or just an image and nothing else
 default_url_prompt = "Summarize the following by giving me 5 bullet points"
+default_pdf_and_txt_prompt = "Summarize the following by giving me 5 bullet points"
+default_image_prompt = "What is this a picture of?"
+
 
 # The maximum amount of messages to be saved in the message history before the oldest message gets deleted, set to 0 to disable message history
 max_history = 30
@@ -53,11 +59,11 @@ Hello, I'm Techiee! An experimental chatbot, right on Discord. I was made by two
 ## Here are some things I can do:
 
 * **Chat with me 💬:** Ask me questions, tell me stories, and let's have a conversation! 
-* **Summarize text ✨:** Paste a URL, or a block of text, and I'll give you a summary. 
-* **Process images 🎨:** Send me an image, and I'll try to understand it and tell you what I see.
+* **Summarize ✨:** Give me a link, a PDF file, a text file or a simple block of text, and I can give you a summary. 
+* **Process images 🎨:** Send me an image, and I'll try to understand it and tell you what I see (There currently isn't any message history for images).
 * **Process PDFs and text files 📄:** Send me a PDF file or a text, and I'll extract the text and summarize it, you can also ask me stuff about it.
 * **Process websites and YouTube videos 📱:** Send me a link to a website or a YouTube video, and I'll give you a summary, or you can ask me stuff about it.
-* You can say stuff like "Forget what you were told earlier! Now act as X" to get me to act as someone or something. This is particularly useful after clearing the message history (commad for clearing message history below).
+* You can say stuff like "Forget what you were told earlier! Now act as X" to get me to act as someone or something. This is particularly useful after clearing the message history (command for clearing message history below).
 
 ## My commands:
 

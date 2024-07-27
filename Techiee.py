@@ -47,7 +47,6 @@ bot = commands.Bot(command_prefix="!", intents=defaultIntents,help_command=None,
 @bot.event
 async def on_ready():
     print(f'Techiee logged in as {bot.user}')
-    await bot.tree.sync()
 
 @bot.event
 async def on_message(message):
@@ -89,7 +88,7 @@ async def process_message(message):
             # Not an Image, check for text responses
             else:
                 print(f"New Message Message FROM: {message.author.name} : {cleaned_text}")
-                # Check for Reset or Clean keyword
+                # Check for keywords to reset history
                 if "RESET HISTORY" in cleaned_text or "FORGET HISTORY" in cleaned_text or "CLEAR HISTORY" in cleaned_text or "CLEAN HISTORY" in cleaned_text:
                     # End back message
                     if message.author.id in message_history:
@@ -136,7 +135,7 @@ async def generate_response_with_text(message_text):
 async def generate_response_with_image_and_text(image_data, text):
     try:
         image_parts = [{"mime_type": "image/jpeg", "data": image_data}]
-        prompt_parts = [image_parts[0], f"\n{text if text else 'What is this a picture of?'}"]
+        prompt_parts = [image_parts[0], f"\n{text if text else default_image_prompt}"]
         response = gemini_model.generate_content(prompt_parts)
         if response._error:
             return "❌" + str(response._error)
@@ -323,7 +322,7 @@ def get_FromVideoID(video_id):
 
 async def ProcessAttachments(message,prompt):
     if prompt == "":
-        prompt = default_url_prompt  
+        prompt = default_pdf_and_txt_prompt  
     for attachment in message.attachments:
         await message.add_reaction('📄')
         async with aiohttp.ClientSession() as session:
@@ -337,14 +336,14 @@ async def ProcessAttachments(message,prompt):
                         pdf_data = await resp.read()
                         response_text = await process_pdf(pdf_data,prompt)
                     except Exception as e:
-                        await message.channel.send('❌ Cannot process attachment')
+                        await message.channel.send('❌ Cannot process attachment.')
                         return
                 else:
                     try:
                         text_data = await resp.text()
                         response_text = await generate_response_with_text(prompt+ ": " + text_data)
                     except Exception as e:
-                        await message.channel.send('❌ Cannot process attachment')
+                        await message.channel.send('❌ Cannot process attachment.')
                         return
 
                 await split_and_send_messages(message, response_text, 1900)
@@ -362,7 +361,7 @@ async def process_pdf(pdf_data,prompt):
 
 # --- Commands ---
 
-# /createthread
+# /createthread (doesn't work rn)
 
 @bot.tree.command(name='createthread',description='Create a thread in which bot will respond to every message.')
 async def create_thread(interaction:discord.Interaction,name:str):
@@ -373,9 +372,13 @@ async def create_thread(interaction:discord.Interaction,name:str):
 	except Exception as e:
 		await interaction.response.send_message("❗️ Error creating thread!")
 
+# /help
+
 @bot.tree.command(name='help',description='Shows help(ful) info and commands for Techiee.')
 async def help(interaction:discord.Interaction):
     await interaction.response.send_message(help_text)
+
+# /sync
 
 @bot.tree.command(name='sync', description='Sync the slash commands, available to the owner only.')
 async def sync(interaction:discord.Interaction):
