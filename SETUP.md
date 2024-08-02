@@ -5,7 +5,7 @@ First, grab your [Google AI Studio API Key](https://aistudio.google.com/app/apik
 You can put channel ID(s) in which Techiee will always check for the messages and respond to them in [config.py](https://github.com/MerBudd/Techiee.py/edit/main/config.py). Otherwise, pinging Techiee, DMing Techiee or using `/createthread` will also work.
 
 > [!WARNING]
-> Techiee.py's config is currently set to Gemini 1.5 Pro! The API access for 1.5 Pro isn't available to the public yet! If you don't have API access to 1.5 Pro, use other models instead! (Gemini 1.5 Flash recommended)
+> Techiee.py's config is currently set to an experimental version of Gemini 1.5 Pro! If you don't want an experimental version, you can use the regular one or the other models instead! (Gemini 1.5 Flash recommended)
 
 You can use a hosting service like [Render](render.com) (which is free and works just fine). You can also host locally on your computer. If you host with Render, you can host 24/7.
 
