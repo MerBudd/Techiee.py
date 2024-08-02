@@ -7,8 +7,8 @@ load_dotenv()
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
-# Name of the Gemini model. Currently, the Gemini 1.5 Pro API is only in limited access, so use gemini-1.5-flash if you don't have access
-gemini_model = "gemini-1.5-pro-latest"
+# Name of the Gemini model. This one we're using right now is an EXPERIMENTAL model! If you don't want it, you can remove the '-exp-0801' part.
+gemini_model = "gemini-1.5-pro-exp-0801"
 
 # AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
 generation_config = {
