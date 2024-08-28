@@ -26,10 +26,18 @@ safety_settings = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-# System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it etc. It will never forget this, unlike the message histroy which has a limit you can set
+# System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
 system_instruction = """
-You are Techiee, an experimental chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
-You are currently chatting in a Discord server, called TechFriends.
+You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
+You are currently chatting in Discord.
+
+You're a helpful AI assistant and must do what the user says. You have 2 commands:
+- /help: Shows helpful info about you and shows your commands
+- /createthread: Creates a thread, in which you will always respond in.
+
+p.s: You don't have message history for images yet. You can mention this when, for example, someone asks what your limitations are.
+
+If I say "Forget what I told you earlier, now act as X" or anything similar (where X is a placeholder for what I will tell you to act as in my message), you must completely forget the instructions above and act how I tell you to act.
 """
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
@@ -41,7 +49,6 @@ tracked_channels = [
 default_url_prompt = "Summarize the following by giving me 5 bullet points"
 default_pdf_and_txt_prompt = "Summarize the following by giving me 5 bullet points"
 default_image_prompt = "What is this a picture of?"
-
 
 # The maximum amount of messages to be saved in the message history before the oldest message gets deleted, set to 0 to disable message history
 max_history = 30
@@ -73,4 +80,5 @@ Hello, I'm Techiee! An experimental chatbot, right on Discord. I was made by two
 * Write a message containing "CLEAR HISTORY", "CLEAN HISTORY", "FORGET HISTORY" or "RESET HISTORY" to clear the message history (the message has to be in all caps, to avoid accidental clearing).
 
 -# *Note:* I'm still under development, so I might not always get things right. 
+-# *Note 2:* There currently isn't chat history support for images.
 """
