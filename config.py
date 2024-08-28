@@ -7,14 +7,14 @@ load_dotenv()
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
-# Name of the Gemini model. This one we're using right now is an EXPERIMENTAL model! If you don't want it, you can remove the '-exp-0801' part.
-gemini_model = "gemini-1.5-pro-exp-0801"
+# Name of the Gemini model. This one we're using right now is an EXPERIMENTAL model! If you don't want it, you can remove the '-exp-0827' part.
+gemini_model = "gemini-1.5-pro-exp-0827"
 
 # AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
 generation_config = {
-    "temperature": 0.9,
+    "temperature": 1,
     "top_p": 1,
-    "top_k": 1,
+    "top_k": 32,
     "max_output_tokens": 2048,
 }
 
