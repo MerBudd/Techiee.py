@@ -42,7 +42,7 @@ tracked_channels = tracked_channels
 # Initialize Discord bot
 defaultIntents = discord.Intents.all()
 defaultIntents.message_content = True
-bot = commands.AutoShardedBot(shard_count=10, command_prefix="!", intents=defaultIntents,help_command=None,activity = discord.Activity(type=discord.ActivityType.listening, name="your every command and being the best Discord chatbot!"))
+bot = commands.Bot(command_prefix="!", intents=defaultIntents,help_command=None,activity = discord.Activity(type=discord.ActivityType.listening, name="your every command and being the best Discord chatbot!"))
 
 @bot.event
 async def on_ready():
