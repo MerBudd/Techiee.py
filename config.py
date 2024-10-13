@@ -15,7 +15,7 @@ gemini_model = "gemini-1.5-pro-002"
 generation_config = {
     "temperature": 1,
     "top_p": 1,
-    "top_k": 48,
+    "top_k": 32,
     "max_output_tokens": 4096,
 }
 
