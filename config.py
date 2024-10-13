@@ -1,4 +1,5 @@
 # Dependencies
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 from dotenv import load_dotenv
 load_dotenv()
