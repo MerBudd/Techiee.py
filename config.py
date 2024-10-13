@@ -7,24 +7,25 @@ load_dotenv()
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
-# Name of the Gemini model. This one we're using right now is an EXPERIMENTAL model! If you don't want it, you can remove the '-exp-0827' part.
-gemini_model = "gemini-1.5-pro-exp-0827"
+# Name of the Gemini model. See https://ai.google.dev/gemini-api/docs/models/gemini#model-variations for more info on the variants.
+gemini_model = "gemini-1.5-pro-002"
 
 # AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
 generation_config = {
     "temperature": 1,
     "top_p": 1,
-    "top_k": 32,
-    "max_output_tokens": 2048,
+    "top_k": 48,
+    "max_output_tokens": 4096,
 }
 
 # Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
-safety_settings = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-]
+safety_settings={
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY: HarmBlockThreshold.BLOCK_NONE,
+}
 
 # System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
 system_instruction = """
