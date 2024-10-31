@@ -122,7 +122,7 @@ async def process_message(message):
 async def generate_response_with_text(message_text):
     try:
         prompt_parts = [message_text]
-        response = gemini_model.generate_content(prompt_parts)
+        response = gemini_model.generate_content(prompt_parts, tools='google_search_retrieval')
         if response._error:
             return "❌" + str(response._error)
         return response.text
