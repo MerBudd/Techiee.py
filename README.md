@@ -34,7 +34,7 @@ You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SET
 
 ### Features being worked on
 
-- There currently aren't any features in our pipeline.
+- Google Search Grounding
 
 ### Features to-do
 
