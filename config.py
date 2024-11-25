@@ -10,7 +10,7 @@ discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
 # Name of the Gemini model. See https://ai.google.dev/gemini-api/docs/models/gemini#model-variations for more info on the variants.
 # Warning: gemini-exp-1121 is an experimental model. If you don't want the experimental model, use "gemini-1.5-pro" or any other model of your choice instead.
-gemini_model = "gemini-exp-1121"
+gemini_model = "gemini-1.5-pro"
 
 # AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
 generation_config = {
