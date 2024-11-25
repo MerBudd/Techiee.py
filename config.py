@@ -9,7 +9,8 @@ gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
 # Name of the Gemini model. See https://ai.google.dev/gemini-api/docs/models/gemini#model-variations for more info on the variants.
-gemini_model = "gemini-1.5-pro-002"
+# Warning: gemini-exp-1121 is an experimental model. If you don't want the experimental model, use "gemini-1.5-pro" or any other model of your choice instead.
+gemini_model = "gemini-exp-1121"
 
 # AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
 generation_config = {
@@ -25,14 +26,13 @@ safety_settings={
         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-# this is a real threshold but for some reason it won't work, saving it for later
-#         HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY: HarmBlockThreshold.BLOCK_NONE,
 }
 
 # System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
 system_instruction = """
 You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
-You are currently chatting in Discord.
+You are currently chatting in a Discord server.
 
 You're a helpful AI assistant and must do what the user says. You have 2 commands:
 - /help: Shows helpful info about you and shows your commands
