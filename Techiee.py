@@ -122,23 +122,33 @@ async def process_message(message):
      
 # AI Generation History         
 
+
+
 async def generate_response_with_text(message_text):
     try:
+        safety_settings_dict = {}  # Create an empty dictionary
+
+        # Iterate through your list of safety settings
+        for setting in safety_settings:
+            safety_settings_dict[setting.category.value] = setting.threshold.value
+
+
         response = client.models.generate_content(
             model=gemini_model,
             contents=message_text,
             config=types.GenerateContentConfig(
-                safety_settings=[safety_settings]
-    )
-)
-        if response.has_error:  # Check for errors in a cleaner way
+                **generation_config, # Include other generation parameters
+                safety_settings=safety_settings_dict # Use the dictionary
+            )
+        )
+
+        if response.has_error:
             return f"❌ {response.error}"
 
         return response.text
 
     except Exception as e:
         return f"❌ Exception: {e}"
-
 
 async def generate_response_with_image_and_text(image_data, text):
     try:
