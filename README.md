@@ -34,8 +34,10 @@ You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SET
 
 ### Features being worked on
 
+- Migrating to the new Gemini API
 - Google Search Grounding
 
 ### Features to-do
 
-- There currently aren't any features we want to work on that we haven't started working on yet.
+- Maybe thinking support
+- Imagen support (API isn't public as of right now)
