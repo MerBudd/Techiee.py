@@ -1,5 +1,6 @@
 # Dependencies
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+from google.genai import types
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -9,8 +10,7 @@ gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
 # Name of the Gemini model. See https://ai.google.dev/gemini-api/docs/models/gemini#model-variations for more info on the variants.
-# Warning: gemini-exp-1121 is an experimental model. If you don't want the experimental model, use "gemini-1.5-pro" or any other model of your choice instead.
-gemini_model = "gemini-1.5-pro"
+gemini_model = "gemini-2.0-flash"
 
 # AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
 generation_config = {
@@ -21,13 +21,20 @@ generation_config = {
 }
 
 # Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
-safety_settings={
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-# The API still doesn't support this one        HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY: HarmBlockThreshold.BLOCK_NONE,
-}
+safety_settings=[
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+        category=types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+]
 
 # System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
 system_instruction = """

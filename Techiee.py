@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
-import google.generativeai as genai
 from discord.ext import commands
+from google import genai
 from pathlib import Path
 import aiohttp
 import re
@@ -9,6 +9,11 @@ import fitz
 import asyncio
 import flask
 from config import *
+import asyncio
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 GEMINI_API_KEY = gemini_api_key
 DISCORD_BOT_TOKEN = discord_bot_token
@@ -31,9 +36,7 @@ from bs4 import BeautifulSoup
 # --- Gemini Configs ---
 
 # Configure the generative AI model
-genai.configure(api_key=GEMINI_API_KEY)
-
-gemini_model = genai.GenerativeModel(model_name=gemini_model, generation_config=generation_config, safety_settings=safety_settings,system_instruction=system_instruction)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 tracked_channels = tracked_channels
 
@@ -121,24 +124,38 @@ async def process_message(message):
 
 async def generate_response_with_text(message_text):
     try:
-        prompt_parts = [message_text]
-        response = gemini_model.generate_content(prompt_parts)
-        if response._error:
-            return "❌" + str(response._error)
+        response = client.models.generate_content(
+            model=gemini_model,
+            contents=message_text,
+            config=types.GenerateContentConfig(
+                safety_settings=[safety_settings]
+    )
+)
+        if response.has_error:  # Check for errors in a cleaner way
+            return f"❌ {response.error}"
+
         return response.text
+
     except Exception as e:
-        return "❌ Exception: " + str(e)
+        return f"❌ Exception: {e}"
+
 
 async def generate_response_with_image_and_text(image_data, text):
     try:
-        image_parts = [{"mime_type": "image/jpeg", "data": image_data}]
-        prompt_parts = [image_parts[0], f"\n{text if text else default_image_prompt}"]
-        response = gemini_model.generate_content(prompt_parts)
-        if response._error:
-            return "❌" + str(response._error)
+        image_parts = [types.Image(mime_type="image/jpeg", data=image_data)]
+        prompt = text if text else default_image_prompt
+        response = await client.generate_content(
+            model=gemini_model,
+            prompt=prompt,
+            images=image_parts,
+        )
+
+        if response.has_error:
+            return f"❌ {response.error}"
+
         return response.text
     except Exception as e:
-        return "❌ Exception: " + str(e)
+        return f"❌ Exception: {e}"
             
 # User message History
 def update_message_history(user_id, text):
