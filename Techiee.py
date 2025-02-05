@@ -122,33 +122,44 @@ async def process_message(message):
      
 # AI Generation History         
 
-
-
 async def generate_response_with_text(message_text):
     try:
-        safety_settings_dict = {}  # Create an empty dictionary
-
-        # Iterate through your list of safety settings
-        for setting in safety_settings:
-            safety_settings_dict[setting.category.value] = setting.threshold.value
-
-
         response = client.models.generate_content(
             model=gemini_model,
             contents=message_text,
             config=types.GenerateContentConfig(
-                **generation_config, # Include other generation parameters
-                safety_settings=safety_settings_dict # Use the dictionary
-            )
-        )
-
-        if response.has_error:
+                safety_settings=[    
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE
+                    ),
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE
+                    ),
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE
+                    ),
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE
+                    ),
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE
+                    ),
+                    ]
+    )
+)
+        if response.has_error:  # Check for errors in a cleaner way
             return f"❌ {response.error}"
 
         return response.text
 
     except Exception as e:
         return f"❌ Exception: {e}"
+
 
 async def generate_response_with_image_and_text(image_data, text):
     try:
