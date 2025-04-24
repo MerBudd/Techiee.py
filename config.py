@@ -23,8 +23,7 @@ generation_configs = types.GenerateContentConfig(
 	response_mime_type= 'application/json',
 	stop_sequences= [],
 	
-	# Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
-
+	# Safety settings. See https://ai.google.dev/gemini-api/docs/safety-settings#safety-filters for more info on the categories and thresholds.
 	safety_settings= [
 		types.SafetySetting(
 			category='HARM_CATEGORY_HARASSMENT',
