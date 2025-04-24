@@ -47,14 +47,14 @@ generation_configs = types.GenerateContentConfig(
    			threshold='BLOCK_NONE'
      		),
 	] 
-),
+	
 	# Google Search Grounding
 	tools=[
 		types.Tool(
 			google_search=types.GoogleSearch()
             )
 	]
-)
+),
 
 
 # System prompt, essentially what the AI needs to know about itself, where it's in, what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
