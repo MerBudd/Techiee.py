@@ -15,9 +15,9 @@ Techiee can be VERY random, but I love him for that...
 
 ## How to configure Techiee
 
-You can tweak settings like the safety settings, temperature, TopK, max message history etc. inside the [config.py](https://github.com/MerBudd/Techiee.py/blob/main/config.py) file.
+You can tweak settings like the safety settings, temperature, TopK, max message history etc. inside the [config.py](https://github.com/MerBudd/Techiee.py/blob/new-api-transition/config.py) file.
 
-You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SETUP.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
+You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/new-api-transition/SETUP.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
 
 
 ## Techiee.py's Features
@@ -34,8 +34,10 @@ You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SET
 
 ### Features being worked on
 
+- Migrating to the new Gemini API
 - Google Search Grounding
 
 ### Features to-do
 
-- There currently aren't any features we want to work on that we haven't started working on yet.
+- Thinking / reasoning model support
+- Imagen / native image generation support
