@@ -39,5 +39,5 @@ You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SET
 
 ### Features to-do
 
-- Maybe thinking support
-- Imagen support (API isn't public as of right now)
+- Thinking/reasoning model support
+- Imagen / Native image gen support
