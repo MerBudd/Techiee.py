@@ -20,7 +20,6 @@ generation_configs = types.GenerateContentConfig(
 	top_k= 35,
 	top_p= 1,
 	temperature= 0.95,
-	response_mime_type= 'application/json',
 	stop_sequences= [],
 	
 	# Safety settings. See https://ai.google.dev/gemini-api/docs/safety-settings#safety-filters for more info on the categories and thresholds.
