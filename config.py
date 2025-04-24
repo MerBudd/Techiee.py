@@ -13,15 +13,17 @@ discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 gemini_model = "gemini-2.0-flash"
 
 # AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
-generation_config = {
-    "temperature": 1,
-    "top_p": 1,
-    "top_k": 32,
-    "max_output_tokens": 4096,
+generation_config = types.GenerateContentConfig(
+	max_output_tokens": 4096,
+	top_k= 35,
+	top_p= 0.5,
+	temperature= 0.95,
+	response_mime_type= 'application/json',
+	stop_sequences= [],
 }
 
 # Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
-safety_settings=[
+safety_settings= [
     types.SafetySetting(
         category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
         threshold=types.HarmBlockThreshold.BLOCK_NONE
