@@ -15,7 +15,7 @@ gemini_model = "gemini-2.0-flash"
 # AI generation configs
 generation_config = types.GenerateContentConfig(
 	# Advanced settings, don't mess around with these if you don't know what you're doing
-	max_output_tokens": 4096,
+	max_output_tokens: 4096,
 	top_k= 35,
 	top_p= 1,
 	temperature= 0.95,
