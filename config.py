@@ -14,7 +14,7 @@ discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 gemini_model = "gemini-2.0-flash"
 
 # AI generation configs
-generation_config = types.GenerateContentConfig(
+generation_configs = types.GenerateContentConfig(
 	# Advanced settings, don't mess around with these if you don't know what you're doing
 	max_output_tokens= 4096,
 	top_k= 35,
@@ -22,31 +22,32 @@ generation_config = types.GenerateContentConfig(
 	temperature= 0.95,
 	response_mime_type= 'application/json',
 	stop_sequences= [],
+	
 	# Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
-	"""
+
 	safety_settings= [
 		types.SafetySetting(
-        		category='HARM_CATEGORY_HARASSMENT',
-        		threshold='BLOCK_NONE'
+			category='HARM_CATEGORY_HARASSMENT',
+			threshold='BLOCK_NONE'
+		),
+		types.SafetySetting(
+			category='HARM_CATEGORY_HATE_SPEECH',
+			threshold='BLOCK_NONE'
+		),
+		types.SafetySetting(
+			category='HARM_CATEGORY_SEXUALLY_EXPLICIT',
+			threshold='BLOCK_NONE'
+		),
+		types.SafetySetting(
+			category='HARM_CATEGORY_DANGEROUS_CONTENT',
+  			threshold='BLOCK_NONE'
     		),
-    		types.SafetySetting(
-        		category='HARM_CATEGORY_HATE_SPEECH',
-        		threshold='BLOCK_NONE'
-    		),
-    		types.SafetySetting(
-        		category='HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        		threshold='BLOCK_NONE'
-    		),
-    		types.SafetySetting(
-        		category='HARM_CATEGORY_DANGEROUS_CONTENT',
-        		threshold='BLOCK_NONE'
-    		),
-    		types.SafetySetting(
-        		category='HARM_CATEGORY_CIVIC_INTEGRITY',
-        		threshold='BLOCK_NONE'
-    		),
+		types.SafetySetting(
+ 			category='HARM_CATEGORY_CIVIC_INTEGRITY',
+   			threshold='BLOCK_NONE'
+     		),
 	] 
-	"""
+),
 	# Google Search Grounding
 	tools=[
 		types.Tool(
