@@ -50,15 +50,11 @@ generation_configs = types.GenerateContentConfig(
 	tools=[
 		types.Tool(
 			google_search=types.GoogleSearch()
-            ),
-            
-		types.Tool(
-      		code_execution=types.ToolCodeExecution
-    	)
+            )
 	],
 
 	# Thinking budget, the amount of tokens allowed for the model to think. The model will automatically decide whether it needs to think or not, depending on your prompt. Set this to 0 to block the model from thinking. 
-	thinking_config=types.ThinkingConfig(thinking_budget=4096),
+	thinking_config=types.ThinkingConfig(thinking_budget=8192),
 )
 
 
