@@ -1,5 +1,6 @@
 # Dependencies
 
+from google import genai
 from google.genai import types
 import os
 from dotenv import load_dotenv
@@ -22,6 +23,7 @@ generation_config = types.GenerateContentConfig(
 	response_mime_type= 'application/json',
 	stop_sequences= [],
 	# Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
+	"""
 	safety_settings= [
 		types.SafetySetting(
         		category='HARM_CATEGORY_HARASSMENT',
@@ -43,7 +45,8 @@ generation_config = types.GenerateContentConfig(
         		category='HARM_CATEGORY_CIVIC_INTEGRITY',
         		threshold='BLOCK_NONE'
     		),
-	]
+	] 
+	"""
 	# Google Search Grounding
 	tools=[
 		types.Tool(
