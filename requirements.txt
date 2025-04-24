@@ -1,6 +1,7 @@
 aiohttp
 discord.py
 google-genai
+pillow
 python-dotenv
 youtube-transcript-api
 PyMuPDF
