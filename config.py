@@ -11,7 +11,7 @@ gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
 # Name of the Gemini model. See https://ai.google.dev/gemini-api/docs/models/gemini#model-variations for more info on the variants.
-gemini_model = "gemini-2.0-flash-exp-image-generation"
+gemini_model = "gemini-2.0-flash"
 
 # AI generation configs
 generation_configs = types.GenerateContentConfig(
@@ -52,8 +52,6 @@ generation_configs = types.GenerateContentConfig(
 			google_search=types.GoogleSearch()
             )
 	],
-
-	response_modalities=['TEXT', 'IMAGE'],
 )
 
 
