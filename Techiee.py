@@ -131,9 +131,6 @@ async def generate_response_with_text(message_text):
             config=generation_configs
     )
 
-        if response.has_error:  # Check for errors in a cleaner way
-            return f"❌ {response.error}"
-
         return response.text
 
     except Exception as e:
@@ -149,9 +146,6 @@ async def generate_response_with_image_and_text(image_data, text):
             prompt=prompt,
             images=image_parts,
         )
-
-        if response.has_error:
-            return f"❌ {response.error}"
 
         return response.text
     except Exception as e:
