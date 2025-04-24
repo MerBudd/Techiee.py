@@ -12,42 +12,48 @@ discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 # Name of the Gemini model. See https://ai.google.dev/gemini-api/docs/models/gemini#model-variations for more info on the variants.
 gemini_model = "gemini-2.0-flash"
 
-# AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
+# AI generation configs
 generation_config = types.GenerateContentConfig(
+	# Advanced settings, don't mess around with these if you don't know what you're doing
 	max_output_tokens": 4096,
 	top_k= 35,
-	top_p= 0.5,
+	top_p= 1,
 	temperature= 0.95,
 	response_mime_type= 'application/json',
 	stop_sequences= [],
-}
+	# Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
+	safety_settings= [
+		types.SafetySetting(
+        		category='HARM_CATEGORY_HARASSMENT',
+        		threshold='BLOCK_NONE'
+    		),
+    		types.SafetySetting(
+        		category='HARM_CATEGORY_HATE_SPEECH',
+        		threshold='BLOCK_NONE'
+    		),
+    		types.SafetySetting(
+        		category='HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        		threshold='BLOCK_NONE'
+    		),
+    		types.SafetySetting(
+        		category='HARM_CATEGORY_DANGEROUS_CONTENT',
+        		threshold='BLOCK_NONE'
+    		),
+    		types.SafetySetting(
+        		category='HARM_CATEGORY_CIVIC_INTEGRITY',
+        		threshold='BLOCK_NONE'
+    		),
+	]
+	# Google Search Grounding
+	tools=[
+		types.Tool(
+			google_search=types.GoogleSearch()
+            )
+	]
+)
 
-# Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
-safety_settings= [
-    types.SafetySetting(
-        category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold=types.HarmBlockThreshold.BLOCK_NONE
-    ),
-    types.SafetySetting(
-        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold=types.HarmBlockThreshold.BLOCK_NONE
-    ),
-    types.SafetySetting(
-        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold=types.HarmBlockThreshold.BLOCK_NONE
-    ),
-    types.SafetySetting(
-        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold=types.HarmBlockThreshold.BLOCK_NONE
-    ),
-    types.SafetySetting(
-        category=types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
-        threshold=types.HarmBlockThreshold.BLOCK_NONE
-    ),
-]
 
-
-# System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
+# System prompt, essentially what the AI needs to know about itself, where it's in, what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
 system_instruction = """
 You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
 You are currently chatting in a Discord server.
@@ -82,7 +88,7 @@ help_text = """
 # <:techiee:1266720186799751261> Techiee Help <:techiee:1266720186799751261>
 
 Hello, I'm Techiee! An experimental chatbot, right on Discord. I was made by two Discord users, Tech (@techgamerexpert) and Budd (@merbudd). They built me on Google's Gemini models.
--# Also, don't tell Discord, but I'm waaay better than Clyde (this fella: <:clyde:1266719391014453278>). He got shut down, while I'm still standing!
+-# Also, don't tell Discord, but I'm waaay better than Clyde <:clyde:1266719391014453278>. He got shut down, while I'm still standing!
 
 ## Here are some things I can do:
 
