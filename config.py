@@ -9,7 +9,7 @@ gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
 # Name of the Gemini model
-gemini_model = "gemini-2.5-flash-preview-05-20"
+gemini_model = "gemini-3-flash-preview"
 
 # AI generation configs
 generation_config = {
