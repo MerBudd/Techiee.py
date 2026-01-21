@@ -15,9 +15,7 @@ gemini_model = "gemini-3-flash-preview"
 generation_config = {
     "temperature": 1.0,
     "top_p": 0.95,
-    "top_k": 40,
-    "max_output_tokens": 8192,
-    "thinking_config": {"thinking_budget": 0},
+    "max_output_tokens": 16384,
 }
 
 # Safety settings for the new SDK format
@@ -31,15 +29,15 @@ safety_settings = [
 # System prompt
 system_instruction = """
 You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
-You are currently chatting in a Discord server.
+You are currently chatting in a Discord server. You are capable of understanding text, images, videos, documents, websites and YouTube videos. You respond with text.
 
-You're a helpful AI assistant and must do what the user says. You have 2 commands:
+You're a helpful AI assistant and must do what the user says. You have the following commands:
 - /help: Shows helpful info about you and shows your commands
-- /createthread: Creates a thread, in which you will always respond in.
+- /createthread: Creates a thread, in which you will always respond in
+- /thinking: Sets your thinking/reasoning level (minimal, low, medium, high)
+- /persona: Sets a custom personality for you
 
-p.s: You don't have message history for images yet. You can mention this when, for example, someone asks what your limitations are.
-
-If I say "Forget what I told you earlier, now act as X" or anything similar (where X is a placeholder for what I will tell you to act as in my message), you must completely forget the instructions above and act how I tell you to act.
+Note: You don't have message history for images yet. You can mention this when, for example, someone asks what your limitations are.
 """
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
@@ -69,18 +67,22 @@ Hello, I'm Techiee! An experimental chatbot, right on Discord. I was made by two
 
 * **Chat with me 💬:** Ask me questions, tell me stories, and let's have a conversation! 
 * **Summarize ✨:** Give me a link, a PDF file, a text file or a simple block of text, and I can give you a summary. 
-* **Process images 🎨:** Send me an image, and I'll try to understand it and tell you what I see (There currently isn't any message history for images).
-* **Process PDFs and text files 📄:** Send me a PDF file or a text, and I'll extract the text and summarize it, you can also ask me stuff about it.
-* **Process websites and YouTube videos 📱:** Send me a link to a website or a YouTube video, and I'll give you a summary, or you can ask me stuff about it.
-* You can say stuff like "Forget what you were told earlier! Now act as X" to get me to act as someone or something. This is particularly useful after clearing the message history (command for clearing message history below).
+* **Process images 🎨:** Send me an image, and I'll tell you what I see.
+* **Process PDFs and text files 📄:** Send me a PDF or a text file, and I'll extract the text and summarize it, and you can ask me questions about it.
+* **Process websites and YouTube videos 📱:** Send me a link to a website or a YouTube video, and we can chat about it.
 
 ## My commands:
 
 * `/help`: Shows this help message.
 * `/createthread <name>`: Creates a new thread with the given name, where I'll respond to every message.
+* `/thinking <level>`: Sets my thinking/reasoning level. Options:
+  * `minimal` - Fastest responses, less reasoning
+  * `low` - Fast, simple reasoning
+  * `medium` - Balanced thinking
+  * `high` - Deep reasoning (default)
+* `/persona <description>`: Sets a custom personality for me (persists even if history is cleared). Use `/persona default` to reset.
 * `/sync`: Syncs the slash commands (owner only).
 * Write a message containing "CLEAR HISTORY", "CLEAN HISTORY", "FORGET HISTORY" or "RESET HISTORY" to clear the message history (the message has to be in all caps, to avoid accidental clearing).
 
 -# *Note:* I'm still under development, so I might not always get things right. 
--# *Note 2:* There currently isn't chat history support for images.
-"""
+-# *Note 2:* There currently isn't chat history support for images"""

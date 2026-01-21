@@ -21,6 +21,47 @@ MAX_HISTORY = max_history
 message_history = {}
 tracked_threads = []
 
+# Per-user settings (for DMs and tracked channels)
+user_settings = {}
+
+# Per-thread settings (for created threads - applies to all users in that thread)
+thread_settings = {}
+
+# Default settings
+default_settings = {
+    "thinking_level": "high",  # minimal, low, medium, high
+    "persona": None  # Custom persona, None means use default system instruction
+}
+
+async def keep_typing(channel):
+    """Keep typing indicator active until cancelled."""
+    try:
+        while True:
+            await channel.typing()
+            await asyncio.sleep(5)  # Discord typing lasts ~10s, refresh at 5s
+    except asyncio.CancelledError:
+        pass  # Gracefully handle cancellation
+
+def get_settings(message):
+    """Get settings for the current context (user or thread)."""
+    if message.channel.id in tracked_threads:
+        return thread_settings.get(message.channel.id, default_settings.copy())
+    else:
+        return user_settings.get(message.author.id, default_settings.copy())
+
+def set_settings(context_id, is_thread, settings):
+    """Set settings for a user or thread."""
+    if is_thread:
+        thread_settings[context_id] = settings
+    else:
+        user_settings[context_id] = settings
+
+def get_effective_system_instruction(settings):
+    """Get the system instruction with persona applied if set."""
+    if settings.get("persona"):
+        return f"{settings['persona']}\n\n{system_instruction}"
+    return system_instruction
+
 # Keep bot running 24/7
 from keep_alive import keep_alive
 keep_alive()
@@ -64,7 +105,13 @@ async def process_message(message):
     if isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads:
         cleaned_text = clean_discord_message(message.content)
         
-        async with message.channel.typing():
+        # Get settings for this context
+        settings = get_settings(message)
+        
+        # Start typing indicator
+        typing_task = asyncio.create_task(keep_typing(message.channel))
+        
+        try:
             # Check for image attachments
             if message.attachments:
                 for attachment in message.attachments:
@@ -73,21 +120,21 @@ async def process_message(message):
                     # Image processing
                     if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
                         print("Processing Image")
-                        response_text = await process_image_attachment(attachment, cleaned_text)
+                        response_text = await process_image_attachment(attachment, cleaned_text, settings)
                         await split_and_send_messages(message, response_text, 1900)
                         return
                     
                     # PDF and text file processing
                     elif attachment.filename.lower().endswith('.pdf') or attachment.filename.lower().endswith('.txt'):
                         print(f"Processing {'PDF' if attachment.filename.lower().endswith('.pdf') else 'Text'} File")
-                        response_text = await process_file_attachment(attachment, cleaned_text)
+                        response_text = await process_file_attachment(attachment, cleaned_text, settings)
                         await split_and_send_messages(message, response_text, 1900)
                         return
                     
                     else:
                         # Try to process as generic text file
                         print("Processing as generic attachment")
-                        response_text = await process_file_attachment(attachment, cleaned_text)
+                        response_text = await process_file_attachment(attachment, cleaned_text, settings)
                         await split_and_send_messages(message, response_text, 1900)
                         return
             
@@ -95,7 +142,7 @@ async def process_message(message):
             else:
                 print(f"New Text Message FROM: {message.author.name} : {cleaned_text}")
                 
-                # Check for keywords to reset history
+                # Check for keywords to reset history (but NOT persona/settings)
                 if any(keyword in cleaned_text for keyword in ["RESET HISTORY", "FORGET HISTORY", "CLEAR HISTORY", "CLEAN HISTORY"]):
                     if message.author.id in message_history:
                         del message_history[message.author.id]
@@ -108,39 +155,48 @@ async def process_message(message):
                     print(f"Got URL: {url}")
                     if is_youtube_url(url):
                         print("Processing YouTube Video")
-                        response_text = await process_youtube_url(url, cleaned_text)
+                        response_text = await process_youtube_url(url, cleaned_text, settings)
                     else:
                         print("Processing Website URL")
-                        response_text = await process_website_url(url, cleaned_text)
+                        response_text = await process_website_url(url, cleaned_text, settings)
                     await split_and_send_messages(message, response_text, 1900)
                     return
                 
                 # Regular text conversation with history
                 if MAX_HISTORY == 0:
-                    response_text = await generate_response_with_text(cleaned_text)
+                    response_text = await generate_response_with_text(cleaned_text, settings)
                     await split_and_send_messages(message, response_text, 1900)
                     return
                 
                 # Add user's question to history
                 update_message_history(message.author.id, cleaned_text)
-                response_text = await generate_response_with_text(get_formatted_message_history(message.author.id))
+                response_text = await generate_response_with_text(get_formatted_message_history(message.author.id), settings)
                 # Add AI response to history
                 update_message_history(message.author.id, response_text)
                 await split_and_send_messages(message, response_text, 1900)
+        finally:
+            # Stop typing indicator AFTER message is sent
+            typing_task.cancel()
 
 
 # --- Response Generation Functions ---
 
-async def generate_response_with_text(message_text):
+async def generate_response_with_text(message_text, settings):
     """Generate a response for text-only input."""
     try:
+        effective_system_instruction = get_effective_system_instruction(settings)
+        thinking_level = settings.get("thinking_level", "high")
+        
         response = client.models.generate_content(
             model=gemini_model,
             contents=message_text,
             config=GenerateContentConfig(
-                system_instruction=system_instruction,
+                system_instruction=effective_system_instruction,
                 safety_settings=safety_settings,
-                **generation_config
+                thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
+                temperature=generation_config.get("temperature", 1.0),
+                top_p=generation_config.get("top_p", 0.95),
+                max_output_tokens=generation_config.get("max_output_tokens", 16384),
             )
         )
         return response.text
@@ -148,9 +204,12 @@ async def generate_response_with_text(message_text):
         return "❌ Exception: " + str(e)
 
 
-async def process_image_attachment(attachment, user_text):
+async def process_image_attachment(attachment, user_text, settings):
     """Process an image attachment using the Files API."""
     try:
+        effective_system_instruction = get_effective_system_instruction(settings)
+        thinking_level = settings.get("thinking_level", "high")
+        
         # Download the image
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
@@ -176,9 +235,12 @@ async def process_image_attachment(attachment, user_text):
                     prompt
                 ],
                 config=GenerateContentConfig(
-                    system_instruction=system_instruction,
+                    system_instruction=effective_system_instruction,
                     safety_settings=safety_settings,
-                    **generation_config
+                    thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
+                    temperature=generation_config.get("temperature", 1.0),
+                    top_p=generation_config.get("top_p", 0.95),
+                    max_output_tokens=generation_config.get("max_output_tokens", 16384),
                 )
             )
             return response.text
@@ -190,9 +252,12 @@ async def process_image_attachment(attachment, user_text):
         return "❌ Exception: " + str(e)
 
 
-async def process_file_attachment(attachment, user_text):
+async def process_file_attachment(attachment, user_text, settings):
     """Process PDF or text file attachments using the Files API."""
     try:
+        effective_system_instruction = get_effective_system_instruction(settings)
+        thinking_level = settings.get("thinking_level", "high")
+        
         # Download the file
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
@@ -218,9 +283,12 @@ async def process_file_attachment(attachment, user_text):
                     prompt
                 ],
                 config=GenerateContentConfig(
-                    system_instruction=system_instruction,
+                    system_instruction=effective_system_instruction,
                     safety_settings=safety_settings,
-                    **generation_config
+                    thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
+                    temperature=generation_config.get("temperature", 1.0),
+                    top_p=generation_config.get("top_p", 0.95),
+                    max_output_tokens=generation_config.get("max_output_tokens", 16384),
                 )
             )
             return response.text
@@ -232,9 +300,12 @@ async def process_file_attachment(attachment, user_text):
         return "❌ Exception: " + str(e)
 
 
-async def process_youtube_url(url, user_text):
+async def process_youtube_url(url, user_text, settings):
     """Process YouTube video URL using FileData."""
     try:
+        effective_system_instruction = get_effective_system_instruction(settings)
+        thinking_level = settings.get("thinking_level", "high")
+        
         prompt = user_text.replace(url, "").strip() if user_text else default_url_prompt
         
         response = client.models.generate_content(
@@ -246,9 +317,12 @@ async def process_youtube_url(url, user_text):
                 ]
             ),
             config=GenerateContentConfig(
-                system_instruction=system_instruction,
+                system_instruction=effective_system_instruction,
                 safety_settings=safety_settings,
-                **generation_config
+                thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
+                temperature=generation_config.get("temperature", 1.0),
+                top_p=generation_config.get("top_p", 0.95),
+                max_output_tokens=generation_config.get("max_output_tokens", 16384),
             )
         )
         return response.text
@@ -256,9 +330,12 @@ async def process_youtube_url(url, user_text):
         return "❌ Exception: " + str(e)
 
 
-async def process_website_url(url, user_text):
+async def process_website_url(url, user_text, settings):
     """Process website URL using URL context tool."""
     try:
+        effective_system_instruction = get_effective_system_instruction(settings)
+        thinking_level = settings.get("thinking_level", "high")
+        
         prompt = user_text if user_text else f"{default_url_prompt} {url}"
         
         # If user provided custom text, make sure the URL is included
@@ -270,9 +347,12 @@ async def process_website_url(url, user_text):
             contents=prompt,
             config=GenerateContentConfig(
                 tools=[Tool(url_context=types.UrlContext())],
-                system_instruction=system_instruction,
+                system_instruction=effective_system_instruction,
                 safety_settings=safety_settings,
-                **generation_config
+                thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
+                temperature=generation_config.get("temperature", 1.0),
+                top_p=generation_config.get("top_p", 0.95),
+                max_output_tokens=generation_config.get("max_output_tokens", 16384),
             )
         )
         return response.text
@@ -377,6 +457,56 @@ async def sync(interaction: discord.Interaction):
         await interaction.response.send_message('Command tree synced.')
     else:
         await interaction.response.send_message('You must be the owner to use this command!')
+
+@bot.tree.command(name='thinking', description='Set the AI thinking level for reasoning depth.')
+@app_commands.choices(level=[
+    app_commands.Choice(name='minimal - Fastest, less reasoning', value='minimal'),
+    app_commands.Choice(name='low - Fast, simple reasoning', value='low'),
+    app_commands.Choice(name='medium - Balanced thinking', value='medium'),
+    app_commands.Choice(name='high - Deep reasoning (default)', value='high'),
+])
+async def thinking(interaction: discord.Interaction, level: app_commands.Choice[str]):
+    # Determine if this is a thread or DM/tracked channel
+    is_thread = interaction.channel.id in tracked_threads
+    context_id = interaction.channel.id if is_thread else interaction.user.id
+    
+    # Get current settings or create new ones
+    if is_thread:
+        current_settings = thread_settings.get(context_id, default_settings.copy())
+    else:
+        current_settings = user_settings.get(context_id, default_settings.copy())
+    
+    # Update thinking level
+    current_settings["thinking_level"] = level.value
+    set_settings(context_id, is_thread, current_settings)
+    
+    scope_msg = "this thread" if is_thread else "you"
+    await interaction.response.send_message(f"🧠 Thinking level set to **{level.value}** for {scope_msg}.")
+
+@bot.tree.command(name='persona', description='Set a custom persona for the AI.')
+@app_commands.describe(description='The persona description (leave empty or use "default" to reset)')
+async def persona(interaction: discord.Interaction, description: str = None):
+    # Determine if this is a thread or DM/tracked channel
+    is_thread = interaction.channel.id in tracked_threads
+    context_id = interaction.channel.id if is_thread else interaction.user.id
+    
+    # Get current settings or create new ones
+    if is_thread:
+        current_settings = thread_settings.get(context_id, default_settings.copy())
+    else:
+        current_settings = user_settings.get(context_id, default_settings.copy())
+    
+    # Check if resetting to default
+    if description is None or description.lower() == "default":
+        current_settings["persona"] = None
+        set_settings(context_id, is_thread, current_settings)
+        scope_msg = "this thread" if is_thread else "you"
+        await interaction.response.send_message(f"🎭 Persona reset to default for {scope_msg}.")
+    else:
+        current_settings["persona"] = description
+        set_settings(context_id, is_thread, current_settings)
+        scope_msg = "this thread" if is_thread else "you"
+        await interaction.response.send_message(f"🎭 Persona set for {scope_msg}:\n> {description}")
 
 
 # --- Run Bot ---
