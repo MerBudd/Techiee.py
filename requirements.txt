@@ -1,9 +1,5 @@
 aiohttp
 discord.py
-google-generativeai
+google-genai
 python-dotenv
-youtube-transcript-api
-PyMuPDF
-requests
-beautifulsoup4
 flask
