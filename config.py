@@ -1,5 +1,14 @@
 # Dependencies
-from google.genai.types import HarmCategory, HarmBlockThreshold, SafetySetting
+from google.genai.types import (
+    HarmCategory, 
+    HarmBlockThreshold, 
+    SafetySetting,
+    GenerateContentConfig,
+    ThinkingConfig,
+    Tool,
+    GoogleSearch,
+    UrlContext,
+)
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -26,6 +35,35 @@ safety_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.OFF),
 ]
 
+# Google Search grounding tool - the model automatically decides when to search
+google_search_tool = Tool(google_search=GoogleSearch())
+
+# URL Context tool for processing websites
+url_context_tool = Tool(url_context=UrlContext())
+
+
+def create_generate_config(system_instruction, thinking_level="minimal", tools=None):
+    """
+    Create a centralized GenerateContentConfig with all common settings.
+    
+    Args:
+        system_instruction: The system instruction to use
+        thinking_level: The thinking level (minimal, low, medium, high)
+        tools: Optional list of tools to include
+    
+    Returns:
+        GenerateContentConfig with all settings applied
+    """
+    return GenerateContentConfig(
+        system_instruction=system_instruction,
+        safety_settings=safety_settings,
+        thinking_config=ThinkingConfig(thinking_level=thinking_level),
+        temperature=generation_config["temperature"],
+        top_p=generation_config["top_p"],
+        max_output_tokens=generation_config["max_output_tokens"],
+        tools=tools,
+    )
+
 # System prompt
 system_instruction = """
 You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
@@ -38,6 +76,7 @@ You're a helpful AI assistant and must do what the user says. You have the follo
 - /persona: Sets a custom personality for you
 
 Note: You don't have message history for images yet. You can mention this when, for example, someone asks what your limitations are.
+Please refrain from mentioning your capabilities, commands and restrictions when you don't have to, or unless the user asks you to.
 """
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages

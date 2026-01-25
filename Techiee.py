@@ -10,7 +10,7 @@ import os
 # Google GenAI imports
 from google import genai
 from google.genai import types
-from google.genai.types import Tool, GenerateContentConfig, Part, Content
+from google.genai.types import Part, Content
 
 from config import *
 
@@ -29,7 +29,7 @@ thread_settings = {}
 
 # Default settings
 default_settings = {
-    "thinking_level": "high",  # minimal, low, medium, high
+    "thinking_level": "minimal",  # minimal, low, medium, high
     "persona": None  # Custom persona, None means use default system instruction
 }
 
@@ -79,8 +79,8 @@ bot = commands.Bot(
     intents=defaultIntents,
     help_command=None,
     activity=discord.Activity(
-        type=discord.ActivityType.listening,
-        name="your every command and being the best Discord chatbot!"
+        type=discord.ActivityType.custom,
+        name="The best Discord chatbot!"
     )
 )
 
@@ -182,21 +182,19 @@ async def process_message(message):
 # --- Response Generation Functions ---
 
 async def generate_response_with_text(message_text, settings):
-    """Generate a response for text-only input."""
+    """Generate a response for text-only input with Google Search grounding."""
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
-        thinking_level = settings.get("thinking_level", "high")
+        thinking_level = settings.get("thinking_level", "minimal")
         
+        # Include google_search_tool - model automatically decides when to search
         response = client.models.generate_content(
             model=gemini_model,
             contents=message_text,
-            config=GenerateContentConfig(
+            config=create_generate_config(
                 system_instruction=effective_system_instruction,
-                safety_settings=safety_settings,
-                thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
-                temperature=generation_config.get("temperature", 1.0),
-                top_p=generation_config.get("top_p", 0.95),
-                max_output_tokens=generation_config.get("max_output_tokens", 16384),
+                thinking_level=thinking_level,
+                tools=[google_search_tool],
             )
         )
         return response.text
@@ -208,7 +206,7 @@ async def process_image_attachment(attachment, user_text, settings):
     """Process an image attachment using the Files API."""
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
-        thinking_level = settings.get("thinking_level", "high")
+        thinking_level = settings.get("thinking_level", "minimal")
         
         # Download the image
         async with aiohttp.ClientSession() as session:
@@ -234,13 +232,9 @@ async def process_image_attachment(attachment, user_text, settings):
                     Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
                     prompt
                 ],
-                config=GenerateContentConfig(
+                config=create_generate_config(
                     system_instruction=effective_system_instruction,
-                    safety_settings=safety_settings,
-                    thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
-                    temperature=generation_config.get("temperature", 1.0),
-                    top_p=generation_config.get("top_p", 0.95),
-                    max_output_tokens=generation_config.get("max_output_tokens", 16384),
+                    thinking_level=thinking_level,
                 )
             )
             return response.text
@@ -256,7 +250,7 @@ async def process_file_attachment(attachment, user_text, settings):
     """Process PDF or text file attachments using the Files API."""
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
-        thinking_level = settings.get("thinking_level", "high")
+        thinking_level = settings.get("thinking_level", "minimal")
         
         # Download the file
         async with aiohttp.ClientSession() as session:
@@ -282,13 +276,9 @@ async def process_file_attachment(attachment, user_text, settings):
                     Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
                     prompt
                 ],
-                config=GenerateContentConfig(
+                config=create_generate_config(
                     system_instruction=effective_system_instruction,
-                    safety_settings=safety_settings,
-                    thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
-                    temperature=generation_config.get("temperature", 1.0),
-                    top_p=generation_config.get("top_p", 0.95),
-                    max_output_tokens=generation_config.get("max_output_tokens", 16384),
+                    thinking_level=thinking_level,
                 )
             )
             return response.text
@@ -304,7 +294,7 @@ async def process_youtube_url(url, user_text, settings):
     """Process YouTube video URL using FileData."""
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
-        thinking_level = settings.get("thinking_level", "high")
+        thinking_level = settings.get("thinking_level", "minimal")
         
         prompt = user_text.replace(url, "").strip() if user_text else default_url_prompt
         
@@ -316,13 +306,9 @@ async def process_youtube_url(url, user_text, settings):
                     Part(text=prompt)
                 ]
             ),
-            config=GenerateContentConfig(
+            config=create_generate_config(
                 system_instruction=effective_system_instruction,
-                safety_settings=safety_settings,
-                thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
-                temperature=generation_config.get("temperature", 1.0),
-                top_p=generation_config.get("top_p", 0.95),
-                max_output_tokens=generation_config.get("max_output_tokens", 16384),
+                thinking_level=thinking_level,
             )
         )
         return response.text
@@ -334,7 +320,7 @@ async def process_website_url(url, user_text, settings):
     """Process website URL using URL context tool."""
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
-        thinking_level = settings.get("thinking_level", "high")
+        thinking_level = settings.get("thinking_level", "minimal")
         
         prompt = user_text if user_text else f"{default_url_prompt} {url}"
         
@@ -345,14 +331,10 @@ async def process_website_url(url, user_text, settings):
         response = client.models.generate_content(
             model=gemini_model,
             contents=prompt,
-            config=GenerateContentConfig(
-                tools=[Tool(url_context=types.UrlContext())],
+            config=create_generate_config(
                 system_instruction=effective_system_instruction,
-                safety_settings=safety_settings,
-                thinking_config=types.ThinkingConfig(thinking_level=thinking_level),
-                temperature=generation_config.get("temperature", 1.0),
-                top_p=generation_config.get("top_p", 0.95),
-                max_output_tokens=generation_config.get("max_output_tokens", 16384),
+                thinking_level=thinking_level,
+                tools=[url_context_tool],
             )
         )
         return response.text
@@ -452,9 +434,13 @@ async def help(interaction: discord.Interaction):
 @bot.tree.command(name='sync', description='Sync the slash commands, available to the owner only.')
 async def sync(interaction: discord.Interaction):
     if interaction.user.id == discord_user_id:
-        await bot.tree.sync(guild=interaction.guild)
-        print('Command tree synced.')
-        await interaction.response.send_message('Command tree synced.')
+        await interaction.response.defer(ephemeral=True)  # Defer since sync can take a moment
+        
+        # Sync globally
+        synced = await bot.tree.sync()
+        
+        print(f'Command tree synced. Synced {len(synced)} commands globally.')
+        await interaction.followup.send(f'✅ Command tree synced! Synced {len(synced)} commands globally.\n-# Note: Global sync can take up to 1 hour to fully propagate across Discord.')
     else:
         await interaction.response.send_message('You must be the owner to use this command!')
 
