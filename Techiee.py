@@ -197,6 +197,9 @@ async def generate_response_with_text(message_text, settings):
                 # tools=[google_search_tool], # Requires paid plan
             )
         )
+        # Handle case where response.text is None
+        if response.text is None:
+            return "❌ I received an empty response. Please try again."
         return response.text
     except Exception as e:
         return "❌ Exception: " + str(e)
@@ -346,6 +349,9 @@ async def process_website_url(url, user_text, settings):
 
 def update_message_history(user_id, text):
     """Update message history for a user."""
+    # Skip None values to prevent join errors later
+    if text is None:
+        return
     if user_id in message_history:
         message_history[user_id].append(text)
         if len(message_history[user_id]) > MAX_HISTORY:
@@ -452,6 +458,9 @@ async def sync(interaction: discord.Interaction):
     app_commands.Choice(name='high - Deep reasoning (default)', value='high'),
 ])
 async def thinking(interaction: discord.Interaction, level: app_commands.Choice[str]):
+    # Defer the response to prevent timeout
+    await interaction.response.defer()
+    
     # Determine if this is a thread or DM/tracked channel
     is_thread = interaction.channel.id in tracked_threads
     context_id = interaction.channel.id if is_thread else interaction.user.id
@@ -467,7 +476,7 @@ async def thinking(interaction: discord.Interaction, level: app_commands.Choice[
     set_settings(context_id, is_thread, current_settings)
     
     scope_msg = "this thread" if is_thread else "you"
-    await interaction.response.send_message(f"🧠 Thinking level set to **{level.value}** for {scope_msg}.")
+    await interaction.followup.send(f"🧠 Thinking level set to **{level.value}** for {scope_msg}.")
 
 @bot.tree.command(name='persona', description='Set a custom persona for the AI.')
 @app_commands.describe(description='The persona description (leave empty or use "default" to reset)')
