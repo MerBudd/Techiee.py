@@ -1,5 +1,5 @@
-aiohttp
 discord.py
+aiohttp
 google-genai
 python-dotenv
 flask

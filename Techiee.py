@@ -33,17 +33,6 @@ default_settings = {
     "persona": None  # Custom persona, None means use default system instruction
 }
 
-async def keep_typing(channel):
-    # Keep typing indicator active until cancelled.
-    # Send initial typing immediately, then refresh every 5 seconds
-    try:
-        await channel.typing()  # Trigger typing immediately
-        while True:
-            await asyncio.sleep(5)  # Discord typing lasts ~10s, refresh at 5s
-            await channel.typing()
-    except asyncio.CancelledError:
-        pass  # Gracefully handle cancellation
-
 
 async def wait_for_file_active(uploaded_file, max_wait_seconds=120, poll_interval=2):
     """Wait for a file to become ACTIVE after upload.
@@ -136,10 +125,8 @@ async def process_message(message):
         # Get settings for this context
         settings = get_settings(message)
         
-        # Start typing indicator
-        typing_task = asyncio.create_task(keep_typing(message.channel))
-        
-        try:
+        # Use Discord's built-in typing context manager - it handles the 10s refresh automatically
+        async with message.channel.typing():
             # Check for image attachments
             if message.attachments:
                 for attachment in message.attachments:
@@ -202,9 +189,6 @@ async def process_message(message):
                 # Add AI response to history
                 update_message_history(message.author.id, response_text)
                 await split_and_send_messages(message, response_text, 1900)
-        finally:
-            # Stop typing indicator AFTER message is sent
-            typing_task.cancel()
 
 
 # --- Response Generation Functions ---
