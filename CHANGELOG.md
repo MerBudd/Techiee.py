@@ -10,6 +10,8 @@
 ### Changed
 - **History Reset**: Replaced keyword-based history reset ("CLEAR HISTORY", etc.) with the cleaner `/forget` slash command.
 - **Help Text**: Improved formatting and clarity, corrected default thinking level to `minimal`.
+
+### Fixed
 - **Typing Indicator**: Improved management of the Discord typing indicator to ensure it remains active during long response generations and cancels correctly upon message delivery.
 
 ## [2.1.0] - 2026-01-26
@@ -37,6 +39,3 @@
 - **SDK Migration**: Switched to the new `google-genai` SDK for modern feature support.
 - **Model Upgrade**: Updated model to `gemini-3-flash-preview`.
 - **Dependencies**: The Google GenAI SDK and Files API now handle most file and URL processing, which allowed for 5 dependencies to be removed while still keeping the same capabilities.
-
-### Fixed
-- **Typing Indicator**: Improved management of the Discord typing indicator to ensure it remains active during long response generations and cancels correctly upon message delivery.
