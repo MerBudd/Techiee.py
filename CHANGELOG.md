@@ -5,10 +5,12 @@
 ### Added
 - **`/forget` Command**: New slash command to clear message history, replacing the old keyword-based method.
 - **Discord Reply Feature**: Bot now uses Discord's native reply feature when responding to messages, making it easier to track conversations.
+- **Video Processing Logic**: Added a separate function for video attachments to wait for them to finish processing on Google's side, so the bot can reply to them. Times out after 120 seconds.
 
 ### Changed
 - **History Reset**: Replaced keyword-based history reset ("CLEAR HISTORY", etc.) with the cleaner `/forget` slash command.
 - **Help Text**: Improved formatting and clarity, corrected default thinking level to `minimal`.
+- **Typing Indicator**: Improved management of the Discord typing indicator to ensure it remains active during long response generations and cancels correctly upon message delivery.
 
 ## [2.1.0] - 2026-01-26
 

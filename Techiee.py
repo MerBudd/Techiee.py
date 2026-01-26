@@ -35,12 +35,40 @@ default_settings = {
 
 async def keep_typing(channel):
     # Keep typing indicator active until cancelled.
+    # Send initial typing immediately, then refresh every 5 seconds
     try:
+        await channel.typing()  # Trigger typing immediately
         while True:
-            await channel.typing()
             await asyncio.sleep(5)  # Discord typing lasts ~10s, refresh at 5s
+            await channel.typing()
     except asyncio.CancelledError:
         pass  # Gracefully handle cancellation
+
+
+async def wait_for_file_active(uploaded_file, max_wait_seconds=120, poll_interval=2):
+    """Wait for a file to become ACTIVE after upload.
+    
+    Video files often need processing time before they can be used.
+    Returns the file when active, or raises an exception on timeout.
+    """
+    import time
+    start_time = time.time()
+    
+    while True:
+        # Check if file is active
+        file_info = client.files.get(name=uploaded_file.name)
+        if file_info.state.name == "ACTIVE":
+            return file_info
+        elif file_info.state.name == "FAILED":
+            raise Exception(f"File processing failed: {uploaded_file.name}")
+        
+        # Check timeout
+        elapsed = time.time() - start_time
+        if elapsed >= max_wait_seconds:
+            raise Exception(f"File processing timed out after {max_wait_seconds} seconds. Please try with a shorter video.")
+        
+        # Wait before next poll
+        await asyncio.sleep(poll_interval)
 
 def get_settings(message):
     # Get settings for the current context (user or thread).
@@ -121,6 +149,13 @@ async def process_message(message):
                     if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
                         print("Processing Image")
                         response_text = await process_image_attachment(attachment, cleaned_text, settings)
+                        await split_and_send_messages(message, response_text, 1900)
+                        return
+                    
+                    # Video processing
+                    elif any(attachment.filename.lower().endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.mpeg', '.mpg', '.wmv', '.flv', '.3gp']):
+                        print("Processing Video")
+                        response_text = await process_video_attachment(attachment, cleaned_text, settings)
                         await split_and_send_messages(message, response_text, 1900)
                         return
                     
@@ -226,6 +261,55 @@ async def process_image_attachment(attachment, user_text, settings):
                 model=gemini_model,
                 contents=[
                     Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
+                    prompt
+                ],
+                config=create_generate_config(
+                    system_instruction=effective_system_instruction,
+                    thinking_level=thinking_level,
+                )
+            )
+            return response.text
+        finally:
+            # Clean up temp file
+            os.unlink(tmp_path)
+            
+    except Exception as e:
+        return "❌ Exception: " + str(e)
+
+
+async def process_video_attachment(attachment, user_text, settings):
+    """Process a video attachment using the Files API with proper state waiting."""
+    try:
+        effective_system_instruction = get_effective_system_instruction(settings)
+        thinking_level = settings.get("thinking_level", "minimal")
+        
+        # Download the video
+        async with aiohttp.ClientSession() as session:
+            async with session.get(attachment.url) as resp:
+                if resp.status != 200:
+                    return "❌ Unable to download the video."
+                video_data = await resp.read()
+        
+        # Create a temporary file and upload to Gemini
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1]) as tmp_file:
+            tmp_file.write(video_data)
+            tmp_path = tmp_file.name
+        
+        try:
+            # Upload file to Gemini
+            uploaded_file = client.files.upload(file=tmp_path)
+            
+            # Wait for video file to become ACTIVE (videos need processing time)
+            print(f"Waiting for video file to become active: {uploaded_file.name}")
+            active_file = await wait_for_file_active(uploaded_file)
+            print(f"Video file is now active: {active_file.name}")
+            
+            prompt = user_text if user_text else "What is this video about? Summarize it for me."
+            
+            response = client.models.generate_content(
+                model=gemini_model,
+                contents=[
+                    Part.from_uri(file_uri=active_file.uri, mime_type=active_file.mime_type),
                     prompt
                 ],
                 config=create_generate_config(
