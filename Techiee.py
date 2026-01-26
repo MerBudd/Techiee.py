@@ -44,8 +44,8 @@ async def wait_for_file_active(uploaded_file, max_wait_seconds=120, poll_interva
     start_time = time.time()
     
     while True:
-        # Check if file is active
-        file_info = client.files.get(name=uploaded_file.name)
+        # Check if file is active - run in thread to not block event loop
+        file_info = await asyncio.to_thread(client.files.get, name=uploaded_file.name)
         if file_info.state.name == "ACTIVE":
             return file_info
         elif file_info.state.name == "FAILED":
@@ -200,7 +200,9 @@ async def generate_response_with_text(message_text, settings):
         thinking_level = settings.get("thinking_level", "minimal")
         
         # Include google_search_tool if you have billing setup - model automatically decides when to search
-        response = client.models.generate_content(
+        # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
             model=gemini_model,
             contents=message_text,
             config=create_generate_config(
@@ -236,12 +238,14 @@ async def process_image_attachment(attachment, user_text, settings):
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini
-            uploaded_file = client.files.upload(file=tmp_path)
+            # Upload file to Gemini - run in thread to not block event loop
+            uploaded_file = await asyncio.to_thread(client.files.upload, file=tmp_path)
             
             prompt = user_text if user_text else default_image_prompt
             
-            response = client.models.generate_content(
+            # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
+            response = await asyncio.to_thread(
+                client.models.generate_content,
                 model=gemini_model,
                 contents=[
                     Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
@@ -280,8 +284,8 @@ async def process_video_attachment(attachment, user_text, settings):
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini
-            uploaded_file = client.files.upload(file=tmp_path)
+            # Upload file to Gemini - run in thread to not block event loop
+            uploaded_file = await asyncio.to_thread(client.files.upload, file=tmp_path)
             
             # Wait for video file to become ACTIVE (videos need processing time)
             print(f"Waiting for video file to become active: {uploaded_file.name}")
@@ -290,7 +294,9 @@ async def process_video_attachment(attachment, user_text, settings):
             
             prompt = user_text if user_text else "What is this video about? Summarize it for me."
             
-            response = client.models.generate_content(
+            # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
+            response = await asyncio.to_thread(
+                client.models.generate_content,
                 model=gemini_model,
                 contents=[
                     Part.from_uri(file_uri=active_file.uri, mime_type=active_file.mime_type),
@@ -329,12 +335,14 @@ async def process_file_attachment(attachment, user_text, settings):
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini
-            uploaded_file = client.files.upload(file=tmp_path)
+            # Upload file to Gemini - run in thread to not block event loop
+            uploaded_file = await asyncio.to_thread(client.files.upload, file=tmp_path)
             
             prompt = user_text if user_text else default_pdf_and_txt_prompt
             
-            response = client.models.generate_content(
+            # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
+            response = await asyncio.to_thread(
+                client.models.generate_content,
                 model=gemini_model,
                 contents=[
                     Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
@@ -362,7 +370,9 @@ async def process_youtube_url(url, user_text, settings):
         
         prompt = user_text.replace(url, "").strip() if user_text else default_url_prompt
         
-        response = client.models.generate_content(
+        # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
             model=gemini_model,
             contents=Content(
                 parts=[
@@ -392,7 +402,9 @@ async def process_website_url(url, user_text, settings):
         if user_text and url not in user_text:
             prompt = f"{user_text} {url}"
         
-        response = client.models.generate_content(
+        # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
             model=gemini_model,
             contents=prompt,
             config=create_generate_config(
