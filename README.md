@@ -1,43 +1,40 @@
 # <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="40" height="40" align=top> Techiee.py
 
-## <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="30" height="30" align=top> Techiee is an experimental Discord AI Chatbot based on Google's Gemini models.
+## <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="30" height="30" align=top> Techiee is an advanced Discord AI Chatbot powered by Google's Gemini models.
 
-## This is the Python version of Techiee! There is a JS version available, however, that one is much less developed. Go to [Techiee.js](https://github.com/MerBudd/Techiee.js) for that.
+This is the Python version of Techiee! It has been completely rewritten to support the latest Gemini 3 models and multimodal capabilities.
 
 ## What is Techiee?
 
-Techiee is... Well, a chatbot, like ChatGPT or Gemini. It uses the same Gemini (models) that Gemini (the chatbot) is based on, however, in Discord!
+Techiee is a capable Discord chatbot built on Google's Gemini models. Techiee is multimodal, which means it can understand text, images, documents, websites, and even YouTube videos together, directly within your Discord server.
 
-Techiee can be VERY random, but I love him for that...
+## Key Features
 
-<img src="https://github.com/MerBudd/Techiee.js/assets/82082386/d9b79ff9-9274-4959-8cd6-317026625c84" width=540 height=283>
+- **🧠 Advanced Reasoning**: Use the `/thinking` command to adjust the AI's reasoning depth (Minimal to High).
+- **🖼️ Multimodal Support**: Send images, PDFs, or text files and Techiee will analyze them.
+- **🌐 Web & Video Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
+- **💬 Smart Memory**: Maintains per-user and per-thread message history for natural conversations.
+- **🎭 Persistent Personas**: Set a custom personality with `/persona` that stays active even after history resets.
+- **🧵 Threads**: Create dedicated chat spaces with `/createthread`.
+- **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
 
+## Configuration
 
-## How to configure Techiee
+You can tweak all bot settings, including safety filters, model parameters, and tracked channels, inside the [config.py](config.py) file.
 
-You can tweak settings like the safety settings, temperature, TopK, max message history etc. inside the [config.py](https://github.com/MerBudd/Techiee.py/blob/main/config.py) file.
+For detailed installation instructions, check out [SETUP.md](SETUP.md).
 
-You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SETUP.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
+## Commands
 
-
-## Techiee.py's Features
-
-### Features done
-
-- The actual bot
-- 24/7
-- Message history/log
-- Ability to recognize, analyze and understand images
-- /createthread - Creates a thread in which Techiee will always check for & respond to messages
-- /forget - Makes Techiee forget the message history and start new. This command also has an optional argument, 'and-act-as-persona' which will make Techiee act as whatever you enter there.
-- Safety settings and other configurable settings
-
-### Features being worked on
-
-- Migrating to the new Gemini API
-- Google Search Grounding
+- `/help`: Shows available commands and bot information.
+- `/createthread <name>`: Starts a new thread where Techiee will respond to every message.
+- `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
+- `/persona <description>`: Sets a custom personality. Use `/persona default` to reset.
+- `/sync`: Syncs slash commands (Owner only).
+- **Reset History**: Send a message containing `CLEAR HISTORY` (all caps) to wipe your current conversation memory.
 
 ### Features to-do
 
-- Thinking/reasoning model support
 - Imagen / Native image gen support
+---
+*Developed by Budd (@merbudd) and Tech (@techgamerexpert).*

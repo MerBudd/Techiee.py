@@ -41,19 +41,8 @@ safety_settings = [
 # URL Context tool for processing websites
 url_context_tool = Tool(url_context=UrlContext())
 
-
+# Techiee's default thinking level is minimal. The user can change the thinking level with the /thinking command. See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
 def create_generate_config(system_instruction, thinking_level="minimal", tools=None):
-    """
-    Create a centralized GenerateContentConfig with all common settings.
-    
-    Args:
-        system_instruction: The system instruction to use
-        thinking_level: The thinking level (minimal, low, medium, high)
-        tools: Optional list of tools to include
-    
-    Returns:
-        GenerateContentConfig with all settings applied
-    """
     return GenerateContentConfig(
         system_instruction=system_instruction,
         safety_settings=safety_settings,

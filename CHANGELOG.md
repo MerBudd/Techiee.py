@@ -9,6 +9,7 @@
 ### Changed
 - **Thinking Defaults**: Updated the default thinking level for the AI.
 - **Command Management**: Enhanced global command synchronization logic for better reliability.
+- **Clarified docs**: Updated the README, SETUP and CHANGELOG files, and updated a few comments in `config.py` and `Techiee.py`
 
 ## [2.0.0] - 2026-01-21
 

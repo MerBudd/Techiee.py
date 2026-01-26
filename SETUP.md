@@ -2,7 +2,7 @@
 
 First, grab your [Google AI Studio API Key](https://aistudio.google.com/app/apikey) and your [Discord Bot Token](https://discord.com/developers/applications), you will need these for later!
 
-You can put channel ID(s) in which Techiee will always check for the messages and respond to them in [config.py](https://github.com/MerBudd/Techiee.py/edit/main/config.py). Otherwise, pinging Techiee, DMing Techiee or using `/createthread` will also work.
+You can put channel ID(s) in which Techiee will always check for messages and respond, in [config.py](config.py). Otherwise, pinging Techiee, DMing Techiee or using `/createthread` will also work.
 
 > [!WARNING]
 > Techiee.py's config is currently set to an experimental version of Gemini 3 Flash! If you don't want an experimental version, you can use other models instead.
