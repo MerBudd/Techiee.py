@@ -194,7 +194,7 @@ async def generate_response_with_text(message_text, settings):
             config=create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
-                tools=[google_search_tool],
+                # tools=[google_search_tool], # Requires paid plan
             )
         )
         return response.text

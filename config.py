@@ -36,7 +36,7 @@ safety_settings = [
 ]
 
 # Google Search grounding tool - the model automatically decides when to search
-google_search_tool = Tool(google_search=GoogleSearch())
+# google_search_tool = Tool(google_search=GoogleSearch()) # Requires paid plan
 
 # URL Context tool for processing websites
 url_context_tool = Tool(url_context=UrlContext())
