@@ -30,8 +30,8 @@ For detailed installation instructions, check out [SETUP.md](SETUP.md).
 - `/createthread <name>`: Starts a new thread where Techiee will respond to every message.
 - `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
 - `/persona <description>`: Sets a custom personality. Use `/persona default` to reset.
+- `/forget`: Clears your message history with Techiee.
 - `/sync`: Syncs slash commands (Owner only).
-- **Reset History**: Send a message containing `CLEAR HISTORY` (all caps) to wipe your current conversation memory.
 
 ### Features to-do
 

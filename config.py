@@ -55,17 +55,21 @@ def create_generate_config(system_instruction, thinking_level="minimal", tools=N
 
 # System prompt
 system_instruction = """
-You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
+You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and you're built on Google's Gemini AI models.
 You are currently chatting in a Discord server. You are capable of understanding text, images, videos, documents, websites and YouTube videos. You respond with text.
 
-You're a helpful AI assistant and must do what the user says. You have the following commands:
+You're an AI assistant and must do what the user says. You have the following commands:
 - /help: Shows helpful info about you and shows your commands
 - /createthread: Creates a thread, in which you will always respond in
 - /thinking: Sets your thinking/reasoning level (minimal, low, medium, high)
 - /persona: Sets a custom personality for you
+- /forget: Clears your message history with the user
 
-Note: You don't have message history for images yet. You can mention this when, for example, someone asks what your limitations are.
-Please refrain from mentioning your capabilities, commands and restrictions when you don't have to, or unless the user asks you to.
+Note: You don't have message history for images yet.
+
+Please refrain from mentioning your developers, models, capabilities, commands and restrictions when you don't have to, or unless the user asks you to. Do not keep mentioning past messages repeatedly when not relevant.
+
+If I set a persona, do your best to act like that persona.
 """
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
@@ -88,29 +92,29 @@ discord_user_id = 622137576836431882
 help_text = """
 # <:techiee:1266720186799751261> Techiee Help <:techiee:1266720186799751261>
 
-Hello, I'm Techiee! An experimental chatbot, right on Discord. I was made by two Discord users, Tech (@techgamerexpert) and Budd (@merbudd). They built me on Google's Gemini models.
--# Also, don't tell Discord, but I'm waaay better than Clyde (this fella: <:clyde:1266719391014453278>). He got shut down, while I'm still standing!
+Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was made by Tech (@techgamerexpert) and Budd (@merbudd), and I'm powered by Google's Gemini models.
+-# Also, I'm waaay better than Clyde (<:clyde:1266719391014453278>). He got shut down, while I'm still standing!
 
-## Here are some things I can do:
+## What I can do:
 
-* **Chat with me 💬:** Ask me questions, tell me stories, and let's have a conversation! 
-* **Summarize ✨:** Give me a link, a PDF file, a text file or a simple block of text, and I can give you a summary. 
-* **Process images 🎨:** Send me an image, and I'll tell you what I see.
-* **Process PDFs and text files 📄:** Send me a PDF or a text file, and I'll extract the text and summarize it, and you can ask me questions about it.
-* **Process websites and YouTube videos 📱:** Send me a link to a website or a YouTube video, and we can chat about it.
+* **💬 Chat**: Ask me questions, tell me stories, or just have a conversation!
+* **✨ Summarize**: Give me a link, PDF, text file, or block of text, and I'll summarize it for you.
+* **🎨 Process Images**: Send me an image and I'll describe what I see.
+* **📄 Process Files**: Send me a PDF or text file and I'll extract and summarize the content.
+* **🌐 Process Web Content**: Share a website URL or YouTube video and we can chat about it.
 
-## My commands:
+## Commands:
 
-* `/help`: Shows this help message.
-* `/createthread <name>`: Creates a new thread with the given name, where I'll respond to every message.
-* `/thinking <level>`: Sets my thinking/reasoning level. Options:
-  * `minimal` - Fastest responses, less reasoning
+* `/help` - Shows this help message
+* `/createthread <name>` - Creates a thread where I'll respond to every message
+* `/thinking <level>` - Sets my thinking/reasoning depth:
+  * `minimal` - Fastest responses, less reasoning (default)
   * `low` - Fast, simple reasoning
   * `medium` - Balanced thinking
-  * `high` - Deep reasoning (default)
-* `/persona <description>`: Sets a custom personality for me (persists even if history is cleared). Use `/persona default` to reset.
-* `/sync`: Syncs the slash commands (owner only).
-* Write a message containing "CLEAR HISTORY", "CLEAN HISTORY", "FORGET HISTORY" or "RESET HISTORY" to clear the message history (the message has to be in all caps, to avoid accidental clearing).
+  * `high` - Deep reasoning
+* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset.
+* `/forget` - Clears your message history with me
+* `/sync` - Syncs slash commands (owner only)
 
--# *Note:* I'm still under development, so I might not always get things right. 
--# *Note 2:* There currently isn't chat history support for images"""
+-# *Note:* I'm still under development, so I might not always get things right.
+-# *Note 2:* I don't have chat history support for images yet."""

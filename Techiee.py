@@ -34,7 +34,7 @@ default_settings = {
 }
 
 async def keep_typing(channel):
-    """Keep typing indicator active until cancelled."""
+    # Keep typing indicator active until cancelled.
     try:
         while True:
             await channel.typing()
@@ -43,21 +43,21 @@ async def keep_typing(channel):
         pass  # Gracefully handle cancellation
 
 def get_settings(message):
-    """Get settings for the current context (user or thread)."""
+    # Get settings for the current context (user or thread).
     if message.channel.id in tracked_threads:
         return thread_settings.get(message.channel.id, default_settings.copy())
     else:
         return user_settings.get(message.author.id, default_settings.copy())
 
 def set_settings(context_id, is_thread, settings):
-    """Set settings for a user or thread."""
+    # Set settings for a user or thread.
     if is_thread:
         thread_settings[context_id] = settings
     else:
         user_settings[context_id] = settings
 
 def get_effective_system_instruction(settings):
-    """Get the system instruction with persona applied if set."""
+    # Get the system instruction with persona applied if set.
     if settings.get("persona"):
         return f"{settings['persona']}\n\n{system_instruction}"
     return system_instruction
@@ -141,13 +141,6 @@ async def process_message(message):
             # Text-only message processing
             else:
                 print(f"New Text Message FROM: {message.author.name} : {cleaned_text}")
-                
-                # Check for keywords to reset history (but NOT persona/settings)
-                if any(keyword in cleaned_text for keyword in ["RESET HISTORY", "FORGET HISTORY", "CLEAR HISTORY", "CLEAN HISTORY"]):
-                    if message.author.id in message_history:
-                        del message_history[message.author.id]
-                    await message.channel.send("🧼 History Reset for user: " + str(message.author.name))
-                    return
                 
                 # Check for URLs
                 url = extract_url(cleaned_text)
@@ -250,7 +243,7 @@ async def process_image_attachment(attachment, user_text, settings):
 
 
 async def process_file_attachment(attachment, user_text, settings):
-    """Process PDF or text file attachments using the Files API."""
+    #Process PDF or text file attachments using the Files API.
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -294,7 +287,7 @@ async def process_file_attachment(attachment, user_text, settings):
 
 
 async def process_youtube_url(url, user_text, settings):
-    """Process YouTube video URL using FileData."""
+    # Process YouTube video URL using FileData.
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -320,7 +313,7 @@ async def process_youtube_url(url, user_text, settings):
 
 
 async def process_website_url(url, user_text, settings):
-    """Process website URL using URL context tool."""
+    # Process website URL using URL context tool.
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -348,7 +341,7 @@ async def process_website_url(url, user_text, settings):
 # --- Message History ---
 
 def update_message_history(user_id, text):
-    """Update message history for a user."""
+    # Update message history for a user.
     # Skip None values to prevent join errors later
     if text is None:
         return
@@ -360,7 +353,7 @@ def update_message_history(user_id, text):
         message_history[user_id] = [text]
 
 def get_formatted_message_history(user_id):
-    """Get formatted message history for a user."""
+    # Get formatted message history for a user.
     if user_id in message_history:
         return '\n\n'.join(message_history[user_id])
     else:
@@ -369,24 +362,27 @@ def get_formatted_message_history(user_id):
 
 # --- Utility Functions ---
 
-async def split_and_send_messages(message_system, text, max_length):
-    """Split long messages and send them sequentially."""
+async def split_and_send_messages(message, text, max_length):
+    # Split long messages and send them sequentially, using reply for first message.
     messages = []
     for i in range(0, len(text), max_length):
         sub_message = text[i:i+max_length]
         messages.append(sub_message)
 
-    for string in messages:
-        await message_system.channel.send(string)
+    for idx, string in enumerate(messages):
+        if idx == 0:
+            await message.reply(string, mention_author=False)
+        else:
+            await message.channel.send(string)
 
 def clean_discord_message(input_string):
-    """Clean Discord message of any <@!123456789> tags."""
+    # Clean Discord message of any <@!123456789> tags.
     bracket_pattern = re.compile(r'<[^>]+>')
     cleaned_content = bracket_pattern.sub('', input_string)
     return cleaned_content.strip()
 
 def extract_url(string):
-    """Extract URL from a string."""
+    # Extract URL from a string.
     url_regex = re.compile(
         r'(?:(?:https?|ftp)://)?'
         r'(?:\S+(?::\S*)?@)?'
@@ -411,7 +407,7 @@ def extract_url(string):
     return match.group(0) if match else None
 
 def is_youtube_url(url):
-    """Check if URL is a YouTube URL."""
+    # Check if URL is a YouTube URL.
     if url is None:
         return False
     youtube_regex = (
@@ -502,6 +498,15 @@ async def persona(interaction: discord.Interaction, description: str = None):
         set_settings(context_id, is_thread, current_settings)
         scope_msg = "this thread" if is_thread else "you"
         await interaction.response.send_message(f"🎭 Persona set for {scope_msg}:\n> {description}")
+
+@bot.tree.command(name='forget', description='Clear your message history with Techiee.')
+async def forget(interaction: discord.Interaction):
+    user_id = interaction.user.id
+    if user_id in message_history:
+        del message_history[user_id]
+        await interaction.response.send_message(f"🧼 History cleared for {interaction.user.name}!")
+    else:
+        await interaction.response.send_message("📭 You don't have any history to clear.")
 
 
 # --- Run Bot ---

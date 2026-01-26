@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.0] - 2026-01-26
+
+### Added
+- **`/forget` Command**: New slash command to clear message history, replacing the old keyword-based method.
+- **Discord Reply Feature**: Bot now uses Discord's native reply feature when responding to messages, making it easier to track conversations.
+
+### Changed
+- **History Reset**: Replaced keyword-based history reset ("CLEAR HISTORY", etc.) with the cleaner `/forget` slash command.
+- **Help Text**: Improved formatting and clarity, corrected default thinking level to `minimal`.
+
 ## [2.1.0] - 2026-01-26
 
 ### Added
