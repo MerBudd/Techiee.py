@@ -182,12 +182,12 @@ async def process_message(message):
 # --- Response Generation Functions ---
 
 async def generate_response_with_text(message_text, settings):
-    """Generate a response for text-only input with Google Search grounding."""
+    # Generate a response for text-only input (with Google Search grounding).
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
         
-        # Include google_search_tool - model automatically decides when to search
+        # Include google_search_tool if you have billing setup - model automatically decides when to search
         response = client.models.generate_content(
             model=gemini_model,
             contents=message_text,
@@ -203,7 +203,7 @@ async def generate_response_with_text(message_text, settings):
 
 
 async def process_image_attachment(attachment, user_text, settings):
-    """Process an image attachment using the Files API."""
+    # Process an image attachment using the Files API.
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")

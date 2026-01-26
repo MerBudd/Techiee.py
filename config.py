@@ -35,8 +35,8 @@ safety_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.OFF),
 ]
 
-# Google Search grounding tool - the model automatically decides when to search
-# google_search_tool = Tool(google_search=GoogleSearch()) # Requires paid plan
+# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment the line below, and line 197 to enable
+# google_search_tool = Tool(google_search=GoogleSearch())
 
 # URL Context tool for processing websites
 url_context_tool = Tool(url_context=UrlContext())
