@@ -12,6 +12,7 @@ from google.genai.types import Part, Content
 
 from config import (
     gemini_api_key,
+    gemini_api_keys,
     gemini_model,
     image_model,
     system_instruction,
@@ -26,8 +27,104 @@ from config import (
     max_history,
 )
 
-# --- Gemini Client Setup ---
-client = genai.Client(api_key=gemini_api_key)
+
+# --- API Key Rotation Manager ---
+class APIKeyManager:
+    """Manages API key rotation for handling 429 rate limit errors."""
+    
+    def __init__(self, api_keys):
+        self.api_keys = api_keys if api_keys else []
+        self.current_index = 0
+        self._client = None
+        
+        if self.api_keys:
+            self._client = genai.Client(api_key=self.api_keys[0])
+            print(f"🔑 API Key Manager initialized with {len(self.api_keys)} key(s). Using key 1.")
+        else:
+            print("⚠️ Warning: No API keys found!")
+    
+    @property
+    def client(self):
+        """Get the current Gemini client."""
+        return self._client
+    
+    def rotate_key(self):
+        """Rotate to the next API key. Returns True if successfully rotated."""
+        if len(self.api_keys) <= 1:
+            print("⚠️ Only one API key available, cannot rotate.")
+            return False
+        
+        # Move to next key (wrap around to 1 if at end)
+        self.current_index = (self.current_index + 1) % len(self.api_keys)
+        new_key = self.api_keys[self.current_index]
+        self._client = genai.Client(api_key=new_key)
+        
+        print(f"🔄 Rotated to API key {self.current_index + 1} of {len(self.api_keys)}")
+        return True
+    
+    def get_current_key_info(self):
+        """Get info about the current key (for logging, not the actual key)."""
+        return f"Key {self.current_index + 1} of {len(self.api_keys)}"
+
+
+# --- Initialize API Key Manager ---
+api_key_manager = APIKeyManager(gemini_api_keys)
+
+# For backwards compatibility
+client = api_key_manager.client
+
+
+def is_rate_limit_error(error):
+    """Check if an exception is a 429 rate limit error."""
+    error_str = str(error)
+    return "429" in error_str and ("RESOURCE_EXHAUSTED" in error_str or "rate" in error_str.lower() or "quota" in error_str.lower())
+
+
+async def execute_with_retry(func, *args, **kwargs):
+    """Execute a function with automatic API key rotation on 429 errors.
+    
+    Args:
+        func: The function to execute (should be a lambda or partial that uses api_key_manager.client)
+        *args, **kwargs: Arguments to pass to the function
+    
+    Returns:
+        The result of the function call
+    
+    Raises:
+        Exception: If all API keys are exhausted or a non-429 error occurs
+    """
+    # Track how many keys we've tried
+    keys_tried = 0
+    total_keys = len(api_key_manager.api_keys)
+    last_error = None
+    
+    while keys_tried < total_keys:
+        try:
+            # Execute the function
+            result = await asyncio.to_thread(func)
+            return result
+        except Exception as e:
+            if is_rate_limit_error(e):
+                last_error = e
+                keys_tried += 1
+                print(f"⚠️ Rate limit hit on {api_key_manager.get_current_key_info()}: {str(e)[:100]}...")
+                
+                if keys_tried < total_keys:
+                    # Try to rotate to the next key
+                    if api_key_manager.rotate_key():
+                        print(f"🔄 Retrying with {api_key_manager.get_current_key_info()}...")
+                        continue
+                
+                # All keys exhausted
+                print(f"❌ All {total_keys} API key(s) exhausted due to rate limits.")
+                raise Exception(f"All {total_keys} API key(s) have been rate limited. Please wait and try again later. Last error: {str(e)}")
+            else:
+                # Non-rate-limit error, re-raise immediately
+                raise e
+    
+    # Should not reach here, but just in case
+    if last_error:
+        raise last_error
 
 # --- Shared State ---
 message_history = {}
@@ -84,7 +181,7 @@ async def wait_for_file_active(uploaded_file, max_wait_seconds=120, poll_interva
     
     while True:
         # Check if file is active - run in thread to not block event loop
-        file_info = await asyncio.to_thread(client.files.get, name=uploaded_file.name)
+        file_info = await asyncio.to_thread(api_key_manager.client.files.get, name=uploaded_file.name)
         if file_info.state.name == "ACTIVE":
             return file_info
         elif file_info.state.name == "FAILED":
@@ -171,16 +268,18 @@ async def generate_response_with_text(contents, settings):
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
         
-        # Include google_search_tool if you have billing setup - model automatically decides when to search
-        # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
-        response = await asyncio.to_thread(
-            client.models.generate_content,
-            model=gemini_model,
-            contents=contents,
-            config=create_generate_config(
-                system_instruction=effective_system_instruction,
-                thinking_level=thinking_level,
-                # tools=[google_search_tool], # Requires paid plan
+        config = create_generate_config(
+            system_instruction=effective_system_instruction,
+            thinking_level=thinking_level,
+            # tools=[google_search_tool], # Requires paid plan
+        )
+        
+        # Use execute_with_retry for automatic key rotation on 429 errors
+        response = await execute_with_retry(
+            lambda: api_key_manager.client.models.generate_content(
+                model=gemini_model,
+                contents=contents,
+                config=config
             )
         )
         # Handle case where response.text is None
@@ -220,8 +319,10 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini - run in thread to not block event loop
-            uploaded_file = await asyncio.to_thread(client.files.upload, file=tmp_path)
+            # Upload file to Gemini with retry on 429 errors
+            uploaded_file = await execute_with_retry(
+                lambda: api_key_manager.client.files.upload(file=tmp_path)
+            )
             
             prompt = user_text if user_text else default_image_prompt
             
@@ -237,14 +338,17 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             else:
                 contents = user_parts
             
-            # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=gemini_model,
-                contents=contents,
-                config=create_generate_config(
-                    system_instruction=effective_system_instruction,
-                    thinking_level=thinking_level,
+            config = create_generate_config(
+                system_instruction=effective_system_instruction,
+                thinking_level=thinking_level,
+            )
+            
+            # Use execute_with_retry for automatic key rotation on 429 errors
+            response = await execute_with_retry(
+                lambda: api_key_manager.client.models.generate_content(
+                    model=gemini_model,
+                    contents=contents,
+                    config=config
                 )
             )
             return (response.text, user_parts, uploaded_file)
@@ -285,8 +389,10 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini - run in thread to not block event loop
-            uploaded_file = await asyncio.to_thread(client.files.upload, file=tmp_path)
+            # Upload file to Gemini with retry on 429 errors
+            uploaded_file = await execute_with_retry(
+                lambda: api_key_manager.client.files.upload(file=tmp_path)
+            )
             
             # Wait for video file to become ACTIVE (videos need processing time)
             print(f"Waiting for video file to become active: {uploaded_file.name}")
@@ -307,14 +413,17 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             else:
                 contents = user_parts
             
-            # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=gemini_model,
-                contents=contents,
-                config=create_generate_config(
-                    system_instruction=effective_system_instruction,
-                    thinking_level=thinking_level,
+            config = create_generate_config(
+                system_instruction=effective_system_instruction,
+                thinking_level=thinking_level,
+            )
+            
+            # Use execute_with_retry for automatic key rotation on 429 errors
+            response = await execute_with_retry(
+                lambda: api_key_manager.client.models.generate_content(
+                    model=gemini_model,
+                    contents=contents,
+                    config=config
                 )
             )
             return (response.text, user_parts, active_file)
@@ -355,8 +464,10 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini - run in thread to not block event loop
-            uploaded_file = await asyncio.to_thread(client.files.upload, file=tmp_path)
+            # Upload file to Gemini with retry on 429 errors
+            uploaded_file = await execute_with_retry(
+                lambda: api_key_manager.client.files.upload(file=tmp_path)
+            )
             
             prompt = user_text if user_text else default_pdf_and_txt_prompt
             
@@ -372,14 +483,17 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
             else:
                 contents = user_parts
             
-            # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=gemini_model,
-                contents=contents,
-                config=create_generate_config(
-                    system_instruction=effective_system_instruction,
-                    thinking_level=thinking_level,
+            config = create_generate_config(
+                system_instruction=effective_system_instruction,
+                thinking_level=thinking_level,
+            )
+            
+            # Use execute_with_retry for automatic key rotation on 429 errors
+            response = await execute_with_retry(
+                lambda: api_key_manager.client.models.generate_content(
+                    model=gemini_model,
+                    contents=contents,
+                    config=config
                 )
             )
             return (response.text, user_parts, uploaded_file)
@@ -421,14 +535,17 @@ async def process_youtube_url(url, user_text, settings, history=None):
         else:
             contents = Content(role="user", parts=user_parts)
         
-        # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
-        response = await asyncio.to_thread(
-            client.models.generate_content,
-            model=gemini_model,
-            contents=contents,
-            config=create_generate_config(
-                system_instruction=effective_system_instruction,
-                thinking_level=thinking_level,
+        config = create_generate_config(
+            system_instruction=effective_system_instruction,
+            thinking_level=thinking_level,
+        )
+        
+        # Use execute_with_retry for automatic key rotation on 429 errors
+        response = await execute_with_retry(
+            lambda: api_key_manager.client.models.generate_content(
+                model=gemini_model,
+                contents=contents,
+                config=config
             )
         )
         return (response.text, user_parts)
@@ -467,15 +584,18 @@ async def process_website_url(url, user_text, settings, history=None):
         else:
             contents = prompt  # URL context tool works with string
         
-        # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
-        response = await asyncio.to_thread(
-            client.models.generate_content,
-            model=gemini_model,
-            contents=contents,
-            config=create_generate_config(
-                system_instruction=effective_system_instruction,
-                thinking_level=thinking_level,
-                tools=[url_context_tool],
+        config = create_generate_config(
+            system_instruction=effective_system_instruction,
+            thinking_level=thinking_level,
+            tools=[url_context_tool],
+        )
+        
+        # Use execute_with_retry for automatic key rotation on 429 errors
+        response = await execute_with_retry(
+            lambda: api_key_manager.client.models.generate_content(
+                model=gemini_model,
+                contents=contents,
+                config=config
             )
         )
         return (response.text, user_parts)
@@ -524,12 +644,13 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
         
         config = GenerateContentConfig(**config_kwargs)
         
-        # Generate content - run in thread to not block event loop
-        response = await asyncio.to_thread(
-            client.models.generate_content,
-            model=image_model,
-            contents=contents,
-            config=config
+        # Use execute_with_retry for automatic key rotation on 429 errors
+        response = await execute_with_retry(
+            lambda: api_key_manager.client.models.generate_content(
+                model=image_model,
+                contents=contents,
+                config=config
+            )
         )
         
         # Extract text and image from response

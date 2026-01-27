@@ -9,6 +9,8 @@
   - **Commands** (`cogs/commands/`): Logically grouped slash commands (admin, general, settings, image_gen).
   - **Router** (`cogs/router.py`): Central message dispatcher that routes to appropriate processors.
   - **Utils** (`utils/`): Shared utilities for Gemini API calls and helper functions.
+- **Multimodal Chat History**: Implemented support for multimodal chat history. Images, videos, files, etc. are now included in the chat history.
+- **API Key Rotation**: Implemented automatic API key rotation for extended usage.
 
 ### Changed
 - **Main File**: Reduced from ~880 lines to ~75 lines, now just loads cogs.

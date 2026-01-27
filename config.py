@@ -14,7 +14,31 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Environment variables
-gemini_api_key = os.getenv('GEMINI_API_KEY')
+# Load multiple API keys for rotation (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+# Falls back to single GEMINI_API_KEY if no numbered keys exist
+def _load_api_keys():
+    """Load all Gemini API keys from environment."""
+    keys = []
+    i = 1
+    while True:
+        key = os.getenv(f'GEMINI_API_KEY_{i}')
+        if key:
+            keys.append(key)
+            i += 1
+        else:
+            break
+    
+    # Fall back to single key if no numbered keys found
+    if not keys:
+        single_key = os.getenv('GEMINI_API_KEY')
+        if single_key:
+            keys.append(single_key)
+    
+    return keys
+
+gemini_api_keys = _load_api_keys()
+# For backwards compatibility, keep the first key as gemini_api_key
+gemini_api_key = gemini_api_keys[0] if gemini_api_keys else None
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
 # Text generation model
@@ -72,8 +96,6 @@ You're an AI assistant and must do what the user says. You have the following co
 - /image: Generates or edits images
 - /forget: Clears your message history with the user
 
-Note: You don't have message history for images or videos yet.
-
 Please refrain from mentioning your developers, models, capabilities, commands and restrictions when you don't have to, or unless the user asks you to.
 Do not keep mentioning past messages repeatedly when not relevant.
 
@@ -130,5 +152,4 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 * `/forget` - Clears your message history with me
 * `/sync` - Syncs slash commands (owner only)
 
--# *Note:* I'm still under development, so I might not always get things right.
--# *Note 2:* I don't have chat history support for images or videos yet."""
+-# *Note:* I'm still under development, so I might not always get things right."""
