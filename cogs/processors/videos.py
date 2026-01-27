@@ -29,13 +29,13 @@ class VideoProcessor(commands.Cog):
         history = get_message_history_contents(message.author.id) if max_history > 0 else None
         
         # Process video with history context
-        response_text, user_parts, uploaded_file = await process_video_attachment(
+        response_text, history_parts, uploaded_file = await process_video_attachment(
             attachment, cleaned_text, settings, history
         )
         
-        # Update history with this interaction
-        if max_history > 0 and user_parts is not None:
-            user_content = create_user_content(user_parts)
+        # Update history with this interaction (using sanitized text-only parts)
+        if max_history > 0 and history_parts is not None:
+            user_content = create_user_content(history_parts)
             update_message_history(message.author.id, user_content)
             model_content = create_model_content(response_text)
             update_message_history(message.author.id, model_content)

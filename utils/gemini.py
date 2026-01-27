@@ -146,11 +146,31 @@ default_settings = {
 # --- Settings Management ---
 
 def get_settings(message):
-    """Get settings for the current context (user or thread)."""
+    """Get settings for the current context (user or thread).
+    
+    Scoping:
+    - Thread context: Use thread settings (applies to all users in thread)
+    - DM context: Use user-specific settings
+    - Tracked channel context: Use user-specific settings
+    - @mention in non-tracked channel: Use default settings only (prevents persona leakage)
+    """
+    import discord
+    
+    # Thread context - use thread settings (applies to all users in thread)
     if message.channel.id in tracked_threads:
         return thread_settings.get(message.channel.id, default_settings.copy())
-    else:
+    
+    # DM context - use user settings
+    if isinstance(message.channel, discord.DMChannel):
         return user_settings.get(message.author.id, default_settings.copy())
+    
+    # Tracked channel context - use user settings
+    if message.channel.id in tracked_channels:
+        return user_settings.get(message.author.id, default_settings.copy())
+    
+    # @mention in non-tracked channel - use default settings only
+    # This prevents persona leakage from DMs/threads into random channels
+    return default_settings.copy()
 
 
 def set_settings(context_id, is_thread, settings):
@@ -300,7 +320,9 @@ async def process_image_attachment(attachment, user_text, settings, history=None
         history: Optional list of Content objects (message history)
     
     Returns:
-        Tuple of (response_text, user_content_parts, uploaded_file) for history tracking
+        Tuple of (response_text, history_parts, uploaded_file) for history tracking.
+        Note: history_parts contains text-only description (no file URI) to avoid
+        403 errors when files expire on Gemini's side.
     """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
@@ -326,7 +348,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             
             prompt = user_text if user_text else default_image_prompt
             
-            # Build user content parts for this message
+            # Build user content parts for this message (with actual file for current request)
             user_parts = [
                 Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
                 Part(text=prompt)
@@ -351,7 +373,13 @@ async def process_image_attachment(attachment, user_text, settings, history=None
                     config=config
                 )
             )
-            return (response.text, user_parts, uploaded_file)
+            
+            # Create sanitized parts for history (text-only, no file URI that could expire)
+            history_parts = [
+                Part(text=f"[Image: {attachment.filename}]\n{prompt}")
+            ]
+            
+            return (response.text, history_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -370,7 +398,9 @@ async def process_video_attachment(attachment, user_text, settings, history=None
         history: Optional list of Content objects (message history)
     
     Returns:
-        Tuple of (response_text, user_content_parts, uploaded_file) for history tracking
+        Tuple of (response_text, history_parts, uploaded_file) for history tracking.
+        Note: history_parts contains text-only description (no file URI) to avoid
+        403 errors when files expire on Gemini's side.
     """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
@@ -401,7 +431,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             
             prompt = user_text if user_text else "What is this video about? Summarize it for me."
             
-            # Build user content parts for this message
+            # Build user content parts for this message (with actual file for current request)
             user_parts = [
                 Part.from_uri(file_uri=active_file.uri, mime_type=active_file.mime_type),
                 Part(text=prompt)
@@ -426,7 +456,13 @@ async def process_video_attachment(attachment, user_text, settings, history=None
                     config=config
                 )
             )
-            return (response.text, user_parts, active_file)
+            
+            # Create sanitized parts for history (text-only, no file URI that could expire)
+            history_parts = [
+                Part(text=f"[Video: {attachment.filename}]\n{prompt}")
+            ]
+            
+            return (response.text, history_parts, active_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -445,7 +481,9 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
         history: Optional list of Content objects (message history)
     
     Returns:
-        Tuple of (response_text, user_content_parts, uploaded_file) for history tracking
+        Tuple of (response_text, history_parts, uploaded_file) for history tracking.
+        Note: history_parts contains text-only description (no file URI) to avoid
+        403 errors when files expire on Gemini's side.
     """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
@@ -471,7 +509,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
             
             prompt = user_text if user_text else default_pdf_and_txt_prompt
             
-            # Build user content parts for this message
+            # Build user content parts for this message (with actual file for current request)
             user_parts = [
                 Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
                 Part(text=prompt)
@@ -496,7 +534,13 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
                     config=config
                 )
             )
-            return (response.text, user_parts, uploaded_file)
+            
+            # Create sanitized parts for history (text-only, no file URI that could expire)
+            history_parts = [
+                Part(text=f"[File: {attachment.filename}]\n{prompt}")
+            ]
+            
+            return (response.text, history_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
