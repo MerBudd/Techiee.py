@@ -5,13 +5,34 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from config import tracked_channels
 from utils.gemini import (
     tracked_threads,
-    user_settings,
-    thread_settings,
+    context_settings,
     default_settings,
-    set_settings,
+    set_settings_for_context,
 )
+
+
+def get_settings_key_from_interaction(interaction: discord.Interaction):
+    """Get the appropriate settings key from an interaction (slash command context)."""
+    channel_id = interaction.channel.id
+    user_id = interaction.user.id
+    
+    # Thread context
+    if channel_id in tracked_threads:
+        return ("thread", channel_id), "this thread"
+    
+    # DM context
+    if isinstance(interaction.channel, discord.DMChannel):
+        return ("dm", user_id), "your DMs"
+    
+    # Tracked channel context
+    if channel_id in tracked_channels:
+        return ("tracked", user_id), "this tracked channel"
+    
+    # @mention context
+    return ("mention", user_id), "your @mentions"
 
 
 class Settings(commands.Cog):
@@ -32,47 +53,36 @@ class Settings(commands.Cog):
         # Defer the response to prevent timeout
         await interaction.response.defer()
         
-        # Determine if this is a thread or DM/tracked channel
-        is_thread = interaction.channel.id in tracked_threads
-        context_id = interaction.channel.id if is_thread else interaction.user.id
+        # Get settings key and scope message for this context
+        settings_key, scope_msg = get_settings_key_from_interaction(interaction)
         
         # Get current settings or create new ones
-        if is_thread:
-            current_settings = thread_settings.get(context_id, default_settings.copy())
-        else:
-            current_settings = user_settings.get(context_id, default_settings.copy())
+        current_settings = context_settings.get(settings_key, default_settings.copy())
         
         # Update thinking level
         current_settings["thinking_level"] = level.value
-        set_settings(context_id, is_thread, current_settings)
+        set_settings_for_context(settings_key, current_settings)
         
-        scope_msg = "this thread" if is_thread else "you"
         await interaction.followup.send(f"🧠 Thinking level set to **{level.value}** for {scope_msg}.")
     
     @app_commands.command(name='persona', description='Set a custom persona for the AI.')
     @app_commands.describe(description='The persona description (leave empty or use "default" to reset)')
     async def persona(self, interaction: discord.Interaction, description: str = None):
         """Set a custom persona for the AI."""
-        # Determine if this is a thread or DM/tracked channel
-        is_thread = interaction.channel.id in tracked_threads
-        context_id = interaction.channel.id if is_thread else interaction.user.id
+        # Get settings key and scope message for this context
+        settings_key, scope_msg = get_settings_key_from_interaction(interaction)
         
         # Get current settings or create new ones
-        if is_thread:
-            current_settings = thread_settings.get(context_id, default_settings.copy())
-        else:
-            current_settings = user_settings.get(context_id, default_settings.copy())
+        current_settings = context_settings.get(settings_key, default_settings.copy())
         
         # Check if resetting to default
         if description is None or description.lower() == "default":
             current_settings["persona"] = None
-            set_settings(context_id, is_thread, current_settings)
-            scope_msg = "this thread" if is_thread else "you"
+            set_settings_for_context(settings_key, current_settings)
             await interaction.response.send_message(f"🎭 Persona reset to default for {scope_msg}.")
         else:
             current_settings["persona"] = description
-            set_settings(context_id, is_thread, current_settings)
-            scope_msg = "this thread" if is_thread else "you"
+            set_settings_for_context(settings_key, current_settings)
             await interaction.response.send_message(f"🎭 Persona set for {scope_msg}:\n> {description}")
 
 

@@ -48,7 +48,7 @@ class General(commands.Cog):
         # Tracked channel context
         elif channel_id in tracked_channels:
             history_key = ("tracked", user_id)
-            scope_msg = "this channel"
+            scope_msg = f"{interaction.user.mention} in this channel"
         else:
             # @mention context - global per-user history
             history_key = ("mention", user_id)

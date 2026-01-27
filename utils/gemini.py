@@ -130,11 +130,13 @@ async def execute_with_retry(func, *args, **kwargs):
 message_history = {}
 tracked_threads = []
 
-# Per-user settings (for DMs and tracked channels)
-user_settings = {}
+# Context-scoped settings (keyed like message_history)
+# Keys: ("thread", thread_id), ("dm", user_id), ("tracked", user_id), ("mention", user_id)
+context_settings = {}
 
-# Per-thread settings (for created threads - applies to all users in that thread)
-thread_settings = {}
+# Legacy: kept for backwards compatibility, but now we use context_settings
+user_settings = {}  # Deprecated - use context_settings
+thread_settings = {}  # Deprecated - use context_settings
 
 # Default settings
 default_settings = {
@@ -145,40 +147,61 @@ default_settings = {
 
 # --- Settings Management ---
 
-def get_settings(message):
-    """Get settings for the current context (user or thread).
+def get_settings_key(message):
+    """Get the appropriate settings key for the current context.
     
-    Scoping:
-    - Thread context: Use thread settings (applies to all users in thread)
-    - DM context: Use user-specific settings
-    - Tracked channel context: Use user-specific settings
-    - @mention in non-tracked channel: Use default settings only (prevents persona leakage)
+    Returns:
+        A tuple key for context_settings dict.
+        - Thread: ("thread", thread_id)
+        - DM: ("dm", user_id)
+        - Tracked channel: ("tracked", user_id)
+        - @mention elsewhere: ("mention", user_id)
     """
     import discord
     
-    # Thread context - use thread settings (applies to all users in thread)
+    # Thread: use thread_id (shared settings for all users in thread)
     if message.channel.id in tracked_threads:
-        return thread_settings.get(message.channel.id, default_settings.copy())
+        return ("thread", message.channel.id)
     
-    # DM context - use user settings
+    # DM: use user_id with dm prefix
     if isinstance(message.channel, discord.DMChannel):
-        return user_settings.get(message.author.id, default_settings.copy())
+        return ("dm", message.author.id)
     
-    # Tracked channel context - use user settings
+    # Tracked channel: use user_id with tracked prefix
     if message.channel.id in tracked_channels:
-        return user_settings.get(message.author.id, default_settings.copy())
+        return ("tracked", message.author.id)
     
-    # @mention in non-tracked channel - use default settings only
-    # This prevents persona leakage from DMs/threads into random channels
-    return default_settings.copy()
+    # @mention elsewhere: use user_id with mention prefix
+    return ("mention", message.author.id)
+
+
+def get_settings(message):
+    """Get settings for the current context.
+    
+    Scoping (separate settings for each):
+    - Thread: Shared by all users in that thread
+    - DM: User's personal DM settings
+    - Tracked channel: User's personal tracked channel settings
+    - @mention elsewhere: User's personal @mention settings
+    """
+    settings_key = get_settings_key(message)
+    return context_settings.get(settings_key, default_settings.copy())
+
+
+def set_settings_for_context(settings_key, settings):
+    """Set settings for a specific context key."""
+    context_settings[settings_key] = settings
 
 
 def set_settings(context_id, is_thread, settings):
-    """Set settings for a user or thread."""
+    """Set settings for a user or thread (legacy, for backwards compatibility)."""
     if is_thread:
         thread_settings[context_id] = settings
+        context_settings[("thread", context_id)] = settings
     else:
         user_settings[context_id] = settings
+        # Note: This legacy function can't distinguish between DM/tracked/mention
+        # New code should use set_settings_for_context directly
 
 
 def get_effective_system_instruction(settings):
