@@ -40,7 +40,7 @@ class VideoProcessor(commands.Cog):
             model_content = create_model_content(response_text)
             update_message_history(message, model_content)
         
-        await split_and_send_messages(message, response_text, 1900)
+        await split_and_send_messages(message, response_text, 1900, message.author.id)
 
 
 async def setup(bot):

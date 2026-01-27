@@ -29,7 +29,7 @@ class TextProcessor(commands.Cog):
         # Regular text conversation with history
         if max_history == 0:
             response_text = await generate_response_with_text(cleaned_text, settings)
-            await split_and_send_messages(message, response_text, 1900)
+            await split_and_send_messages(message, response_text, 1900, message.author.id)
             return
         
         # Create user content with text part
@@ -47,7 +47,7 @@ class TextProcessor(commands.Cog):
         model_content = create_model_content(response_text)
         update_message_history(message, model_content)
         
-        await split_and_send_messages(message, response_text, 1900)
+        await split_and_send_messages(message, response_text, 1900, message.author.id)
 
 
 async def setup(bot):

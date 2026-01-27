@@ -4,24 +4,32 @@ Utility functions for message handling and URL processing.
 import re
 
 
-async def split_and_send_messages(message, text, max_length):
+async def split_and_send_messages(message, text, max_length, user_id=None):
     """Split long messages and send them sequentially, using reply for first message.
     
     Features:
     - Does not cut words in the middle
     - Preserves markdown formatting by cutting before markdown elements
     - Adds "... [m/n]" indicators (no "..." on final message)
+    - Mentions the user in 2nd and later split messages for notification visibility
+    
+    Args:
+        message: The Discord message to reply to
+        text: The text content to send
+        max_length: Maximum length per message
+        user_id: Optional user ID to mention in continuation messages
     """
     if not text:
         return
     
     # If text fits in one message, just send it
     if len(text) <= max_length:
-        await message.reply(text, mention_author=False)
+        await message.reply(text, mention_author=True)
         return
     
-    # Reserve space for indicator " ... [XX/XX]" (max 13 chars)
-    indicator_reserve = 15
+    # Reserve space for indicator " ... [XX/XX]" (max 13 chars) + mention " <@USER_ID>" (max ~25 chars)
+    mention_reserve = 25 if user_id else 0
+    indicator_reserve = 15 + mention_reserve
     effective_max = max_length - indicator_reserve
     
     # Markdown patterns that should not be split in the middle
@@ -124,19 +132,26 @@ async def split_and_send_messages(message, text, max_length):
         remaining = remaining[cut_pos:].lstrip()
     
     # Add indicators to each chunk
+    # For continuation messages (2nd and later), add user mention after indicator
+    user_mention = f" <@{user_id}>" if user_id else ""
     total = len(chunks)
     for i in range(len(chunks)):
-        if i < total - 1:
-            # Not the last message - add "... [m/n]"
-            chunks[i] = f"{chunks[i]}... [{i+1}/{total}]"
+        if i == 0:
+            # First message - no mention needed (it's a reply with mention_author=True)
+            if total > 1:
+                chunks[i] = f"{chunks[i]}... [{i+1}/{total}]"
+            # If only one chunk, it was already handled above, but just in case
+        elif i < total - 1:
+            # Middle messages - add "... [m/n]" and user mention
+            chunks[i] = f"{chunks[i]}... [{i+1}/{total}]{user_mention}"
         else:
-            # Last message - just add "[m/n]" without dots
-            chunks[i] = f"{chunks[i]} [{i+1}/{total}]"
+            # Last message - just add "[m/n]" without dots, but with user mention
+            chunks[i] = f"{chunks[i]} [{i+1}/{total}]{user_mention}"
     
     # Send the messages
     for idx, chunk in enumerate(chunks):
         if idx == 0:
-            await message.reply(chunk, mention_author=False)
+            await message.reply(chunk, mention_author=True)
         else:
             await message.channel.send(chunk)
 
