@@ -11,12 +11,15 @@ Techiee is a capable Discord chatbot built on Google's Gemini models. Techiee is
 ## Key Features
 
 - **🧠 Advanced Reasoning**: Use the `/thinking` command to adjust the AI's reasoning depth (Minimal to High).
-- **🖼️ Multimodal Support**: Send images, PDFs, or text files and Techiee will analyze them.
-- **🌐 Web & Video Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
-- **💬 Smart Memory**: Maintains per-user and per-thread message history for natural conversations.
+- **🖼️ Multimodal Support**: Send images, videos, documents, PDFs, or text files and Techiee will analyze them.
+- **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
+- **💬 Memory**: Maintains per-user and per-thread message history and personas for natural conversations.
 - **🎭 Persistent Personas**: Set a custom personality with `/persona` that stays active even after history resets.
 - **🧵 Threads**: Create dedicated chat spaces with `/createthread`.
 - **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
+
+>[!NOTE]
+> Personas and Thinking levels only apply to the user who used the command in DMs, @mentions, and tracked channels. In threads created with `/createthread`, they apply to everyone.
 
 ## Configuration
 
@@ -33,8 +36,8 @@ For detailed installation instructions, check out [SETUP.md](SETUP.md).
 - `/forget`: Clears your message history with Techiee.
 - `/sync`: Syncs slash commands (Owner only).
 
-### Features to-do
+### To-do
 
-- Imagen / Native image gen support
+- Implement Imagen or Nano Banana image generation support
 ---
 *Developed by Budd (@merbudd) and Tech (@techgamerexpert).*
