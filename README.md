@@ -18,13 +18,13 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 
 ## Key Features
 
-- **🧠 Advanced Reasoning**: Use the `/thinking` command to adjust the AI's reasoning depth (Minimal to High).
 - **🖼️ Multimodal Support**: Send images, videos, documents, PDFs, or text files and Techiee will analyze them.
 - **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
-- **💬 Memory**: Maintains per-user and per-thread message history and personas for natural conversations.
+- **🧠 Advanced Reasoning**: Use the `/thinking` command to adjust the AI's reasoning depth (Minimal to High).
 - **🎭 Persistent Personas**: Set a custom personality with `/persona` that stays active even after history resets.
-- **🎨 Image Generation**: Generate or edit images with `/image`, using Nano Banana (requires paid API key).
+- **💬 Memory**: Maintains per-user and per-thread message history and personas for natural conversations.
 - **🧵 Threads**: Create dedicated chat spaces with `/createthread`.
+- **🎨 Image Generation**: Generate or edit images with `/image`, using Nano Banana (requires paid API key).
 - **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
 
 >[!NOTE]
