@@ -1,12 +1,20 @@
-# <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="40" height="40" align=top> Techiee.py
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/assets/Techiee%20combo%20light.png">
+    <source media="(prefers-color-scheme: light)" srcset="/assets/Techiee%20combo%20dark.png">
+    <img
+    alt="Techiee logo showing a star with 8 sides and rounded corners, with a gradient color going from blue to purple to orange. To the right of the star is the text 'Techiee.py' written in a semibold and rounded font."
+    src="default-image.png"
+    style="width: 80%; height: auto;"
+    >
+  </picture>
+</div>
 
-## <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="30" height="30" align=top> Techiee is an advanced Discord AI Chatbot powered by Google's Gemini models.
+## <img src="/assets/Techiee%20star%20symbol.png" width="30" height="30" align=top> What is Techiee?
 
-This is the Python version of Techiee! It has been completely rewritten to support the latest Gemini 3 models and multimodal capabilities.
+Techiee is an advanced Discord chatbot built on Google's Gemini models. Techiee is multimodal; which means it can understand text, images, videos, documents, websites, and even YouTube videos, together, directly within your Discord server.
 
-## What is Techiee?
-
-Techiee is a capable Discord chatbot built on Google's Gemini models. Techiee is multimodal, which means it can understand text, images, documents, websites, and even YouTube videos together, directly within your Discord server.
+This is the Python version of Techiee. It has been completely rewritten to support the latest Gemini 3 models and multimodal capabilities.
 
 ## Key Features
 
@@ -34,7 +42,7 @@ For detailed installation instructions, check out [SETUP.md](SETUP.md).
 - `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
 - `/persona <description>`: Sets a custom personality. Use `/persona default` to reset.
 - `/forget`: Clears your message history with Techiee.
-- `/sync`: Syncs slash commands (Owner only).
+- `/sync`: Syncs slash commands globally (Owner only).
 
 ### To-do
 
