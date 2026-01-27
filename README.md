@@ -58,7 +58,7 @@ You can tweak all bot settings, including safety filters, model parameters, and 
           <img
             alt="Paper icon with gradient colors, to the right of it is the text 'Setup'"
             src="/assets/Setup-light.png"
-            style="height: 80px; width: auto;"
+            style="height: 90px; width: auto;"
           >
         </picture>
         <br>
@@ -73,7 +73,7 @@ You can tweak all bot settings, including safety filters, model parameters, and 
           <img
             alt="Paper icon with gradient colors, to the right of it is the text 'Changelogs'"
             src="/assets/Changelogs-light.png"
-            style="height: 80px; width: auto;"
+            style="height: 90px; width: auto;"
           >
         </picture>
         <br>
