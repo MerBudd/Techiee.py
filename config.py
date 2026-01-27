@@ -65,7 +65,7 @@ safety_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.OFF),
 ]
 
-# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment line 142 in /utils/gemini.py to enable
+# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment line 274 in /utils/gemini.py to enable
 google_search_tool = Tool(google_search=GoogleSearch())
 
 # URL Context tool for processing websites
