@@ -1,43 +1,91 @@
-# <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="40" height="40" align=top> Techiee.py
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/assets/Techiee-light.png">
+    <source media="(prefers-color-scheme: light)" srcset="/assets/Techiee-dark.png">
+    <img
+    alt="Techiee logo showing a star with 8 sides and rounded corners, with a gradient color going from blue to purple to orange. To the right of the star is the text 'Techiee.py' written in a semibold and rounded font."
+    src="/assets/Techiee-light.png"
+    style="width: 75%; height: auto;"
+    >
+  </picture>
+</div>
 
-## <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="30" height="30" align=top> Techiee is an experimental Discord AI Chatbot based on Google's Gemini models.
+## <img src="/assets/Techiee-star.png" width="30" height="30" align=top> What is Techiee? <img src="/assets/Techiee-star.png" width="30" height="30" align=top>
 
-## This is the Python version of Techiee! There is a JS version available, however, that one is much less developed. Go to [Techiee.js](https://github.com/MerBudd/Techiee.js) for that.
+Techiee is an advanced Discord chatbot built on Google's Gemini models. It is multimodal; which means it can understand text, images, videos, documents, websites, and even YouTube videos, together, directly within your Discord server.
 
-## What is Techiee?
+This is the Python version of Techiee. It has been completely rewritten to support the latest Gemini 3 models and multimodal capabilities.
 
-Techiee is... Well, a chatbot, like ChatGPT or Gemini. It uses the same Gemini (models) that Gemini (the chatbot) is based on, however, in Discord!
+## Key Features
 
-Techiee can be VERY random, but I love him for that...
+- **🧠 Advanced Reasoning**: Use the `/thinking` command to adjust the AI's reasoning depth (Minimal to High).
+- **🖼️ Multimodal Support**: Send images, videos, documents, PDFs, or text files and Techiee will analyze them.
+- **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
+- **💬 Memory**: Maintains per-user and per-thread message history and personas for natural conversations.
+- **🎭 Persistent Personas**: Set a custom personality with `/persona` that stays active even after history resets.
+- **🎨 Image Generation**: Generate or edit images with `/image`, using Nano Banana (requires paid API key).
+- **🧵 Threads**: Create dedicated chat spaces with `/createthread`.
+- **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
 
-<img src="https://github.com/MerBudd/Techiee.js/assets/82082386/d9b79ff9-9274-4959-8cd6-317026625c84" width=540 height=283>
+>[!NOTE]
+> Personas and Thinking levels only apply to the user who used the command in DMs, @mentions, and tracked channels. In threads created with `/createthread`, they apply to everyone.
+
+## Configuration
+
+You can tweak all bot settings, including safety filters, model parameters, and tracked channels, inside the [config.py](config.py) file.
+
+## Commands
+
+- `/help`: Shows available commands and bot information.
+- `/createthread <name>`: Starts a new thread where Techiee will respond to every message.
+- `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
+- `/persona <description>`: Sets a custom personality. Use `/persona default` to reset.
+- `/forget`: Clears your message history with Techiee.
+- `/image`: Generates or edits an image using Nano Banana (requires paid API key).
+- `/sync`: Syncs slash commands globally (Owner only).
+
+---
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="/assets/SETUP.md">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="/assets/Setup-light.png">
+          <source media="(prefers-color-scheme: light)" srcset="/assets/Setup-dark.png">
+          <img
+            alt="Paper icon with gradient colors, to the right of it is the text 'Setup'"
+            src="/assets/Setup-light.png"
+            style="max-height: 90px; width: auto; max-width: 100%;"
+          >
+        </picture>
+        <br>
+        <strong>Detailed installation instructions</strong>
+      </a>
+    </td>
+    <td align="center">
+      <a href="/assets/CHANGELOG.md">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="/assets/Changelogs-light.png">
+          <source media="(prefers-color-scheme: light)" srcset="/assets/Changelogs-dark.png">
+          <img
+            alt="Paper icon with gradient colors, to the right of it is the text 'Changelogs'"
+            src="/assets/Changelogs-light.png"
+            style="max-height: 90px; width: auto; max-width: 100%;"
+          >
+        </picture>
+        <br>
+        <strong>List of changes</strong>
+      </a>
+    </td>
+  </tr>
+</table>
+
+</div>
 
 
-## How to configure Techiee
+---
 
-You can tweak settings like the safety settings, temperature, TopK, max message history etc. inside the [config.py](https://github.com/MerBudd/Techiee.py/blob/main/config.py) file.
-
-You can check out [SETUP.md](https://github.com/MerBudd/Techiee.py/blob/main/SETUP.md) for instructions on how to run it locally or with a hosting service (Render) and run it 24/7.
-
-
-## Techiee.py's Features
-
-### Features done
-
-- The actual bot
-- 24/7
-- Message history/log
-- Ability to recognize, analyze and understand images
-- /createthread - Creates a thread in which Techiee will always check for & respond to messages
-- /forget - Makes Techiee forget the message history and start new. This command also has an optional argument, 'and-act-as-persona' which will make Techiee act as whatever you enter there.
-- Safety settings and other configurable settings
-
-### Features being worked on
-
-- Migrating to the new Gemini API
-- Google Search Grounding
-
-### Features to-do
-
-- Thinking/reasoning model support
-- Imagen / Native image gen support
+*Developed by Budd (@merbudd) and Tech (@techgamerexpert).*

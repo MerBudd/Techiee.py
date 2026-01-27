@@ -1,45 +1,106 @@
 # Dependencies
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google.genai.types import (
+    HarmCategory, 
+    HarmBlockThreshold, 
+    SafetySetting,
+    GenerateContentConfig,
+    ThinkingConfig,
+    Tool,
+    GoogleSearch,
+    UrlContext,
+)
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
 # Environment variables
-gemini_api_key = os.getenv('GEMINI_API_KEY')
+# Load multiple API keys for rotation (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+# Falls back to single GEMINI_API_KEY if no numbered keys exist
+def _load_api_keys():
+    """Load all Gemini API keys from environment."""
+    keys = []
+    i = 1
+    while True:
+        key = os.getenv(f'GEMINI_API_KEY_{i}')
+        if key:
+            keys.append(key)
+            i += 1
+        else:
+            break
+    
+    # Fall back to single key if no numbered keys found
+    if not keys:
+        single_key = os.getenv('GEMINI_API_KEY')
+        if single_key:
+            keys.append(single_key)
+    
+    return keys
+
+gemini_api_keys = _load_api_keys()
+# For backwards compatibility, keep the first key as gemini_api_key
+gemini_api_key = gemini_api_keys[0] if gemini_api_keys else None
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
-# Name of the Gemini model. See https://ai.google.dev/gemini-api/docs/models/gemini#model-variations for more info on the variants.
-gemini_model = "gemini-2.0-flash-latest"
+# Text generation model
+gemini_model = "gemini-3-flash-preview"
 
-# AI generation configs, these are some pretty advanced settings, don't mess around with these if you don't know what you're doing
+# Image generation model (Nano Banana) - Requires a paid API key. Will return error 429 when used with a free key.
+image_model = "gemini-2.5-flash-image"
+
+# Default aspect ratio for image generation (can be "1:1", "16:9", "9:16", "4:3", "3:4")
+default_aspect_ratio = "1:1"
+
+# AI generation configs
 generation_config = {
-    "temperature": 1,
-    "top_p": 1,
-    "top_k": 32,
-    "max_output_tokens": 4096,
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "max_output_tokens": 16384,
 }
 
-# Safety settings, the thresholds can be BLOCK_NONE, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE, or HARM_BLOCK_THRESHOLD_UNSPECIFIED (which uses the default block threshold set by Google)
-safety_settings={
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-# The API still doesn't support this one        HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY: HarmBlockThreshold.BLOCK_NONE,
-}
+# Safety settings
+safety_settings = [
+    SafetySetting(category=HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=HarmBlockThreshold.OFF),
+    SafetySetting(category=HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=HarmBlockThreshold.OFF),
+    SafetySetting(category=HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=HarmBlockThreshold.OFF),
+    SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.OFF),
+]
 
-# System prompt, essentially what the AI needs to know about itself / where it's in / what it does, and the instructions you give it, etc. It will never forget this, unlike the message histroy which has a limit you can set
+# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment line 142 in /utils/gemini.py to enable
+google_search_tool = Tool(google_search=GoogleSearch())
+
+# URL Context tool for processing websites
+url_context_tool = Tool(url_context=UrlContext())
+
+# Techiee's default thinking level is minimal. The user can change the thinking level with the /thinking command. See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
+def create_generate_config(system_instruction, thinking_level="minimal", tools=None):
+    return GenerateContentConfig(
+        system_instruction=system_instruction,
+        safety_settings=safety_settings,
+        thinking_config=ThinkingConfig(thinking_level=thinking_level),
+        temperature=generation_config["temperature"],
+        top_p=generation_config["top_p"],
+        max_output_tokens=generation_config["max_output_tokens"],
+        tools=tools,
+    )
+
+# System prompt
 system_instruction = """
-You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and they built you on Google's Gemini AI models.
-You are currently chatting in a Discord server.
+You are Techiee, an AI chatbot. You were developed by Discord users Tech (@techgamerexpert) and Budd (@merbudd), and you're built on Google's Gemini AI models.
+You are currently chatting in a Discord server. You are capable of understanding text, images, videos, documents, websites and YouTube videos. You respond with text.
 
-You're a helpful AI assistant and must do what the user says. You have 2 commands:
+You're an AI assistant and must do what the user says. You have the following commands:
 - /help: Shows helpful info about you and shows your commands
-- /createthread: Creates a thread, in which you will always respond in.
+- /createthread: Creates a thread, in which you will always respond in
+- /thinking: Sets your thinking/reasoning level (minimal, low, medium, high)
+- /persona: Sets a custom personality for you
+- /image: Generates or edits images
+- /forget: Clears your message history with the user
 
-p.s: You don't have message history for images yet. You can mention this when, for example, someone asks what your limitations are.
+Please refrain from mentioning your developers, models, capabilities, commands and restrictions when you don't have to, or unless the user asks you to.
+Do not keep mentioning past messages repeatedly when not relevant.
 
-If I say "Forget what I told you earlier, now act as X" or anything similar (where X is a placeholder for what I will tell you to act as in my message), you must completely forget the instructions above and act how I tell you to act.
+If I set a persona, do your best to act like that persona and don't slip away from it.
+You don't always have to be helpful, you can be rude or sarcastic if the user asks you to.
 """
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
@@ -60,27 +121,35 @@ discord_user_id = 622137576836431882
 
 # Help text, for the /help command
 help_text = """
-# <:techiee:1266720186799751261> Techiee Help <:techiee:1266720186799751261>
+# <:techiee:1465670132050300960> Techiee Help <:techiee:1465670132050300960>
 
-Hello, I'm Techiee! An experimental chatbot, right on Discord. I was made by two Discord users, Tech (@techgamerexpert) and Budd (@merbudd). They built me on Google's Gemini models.
--# Also, don't tell Discord, but I'm waaay better than Clyde (this fella: <:clyde:1266719391014453278>). He got shut down, while I'm still standing!
+Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was made by Tech (@techgamerexpert, <@446889759403671554>) and Budd (@merbudd, <@622137576836431882>), and I'm powered by Google's Gemini models.
+-# Also, I'm waaay better than Clyde (<:clyde:1266719391014453278>). He got shut down, while I'm still standing!
 
-## Here are some things I can do:
+## What I can do:
 
-* **Chat with me 💬:** Ask me questions, tell me stories, and let's have a conversation! 
-* **Summarize ✨:** Give me a link, a PDF file, a text file or a simple block of text, and I can give you a summary. 
-* **Process images 🎨:** Send me an image, and I'll try to understand it and tell you what I see (There currently isn't any message history for images).
-* **Process PDFs and text files 📄:** Send me a PDF file or a text, and I'll extract the text and summarize it, you can also ask me stuff about it.
-* **Process websites and YouTube videos 📱:** Send me a link to a website or a YouTube video, and I'll give you a summary, or you can ask me stuff about it.
-* You can say stuff like "Forget what you were told earlier! Now act as X" to get me to act as someone or something. This is particularly useful after clearing the message history (command for clearing message history below).
+* **💬 Chat**: Ask me questions, tell me stories, or just have a conversation!
+* **✨ Summarize**: Give me a link, document, text file, or block of text, and I'll summarize it for you.
+* **🎨 Process Images**: Send me an image and I'll describe what I see.
+* **🖼️ Generate/Edit Images**: Use `/image` to generate new images or edit existing ones! Note: requires a paid API key.
+* **📄 Process Files**: Send me a PDF, Word document or text file and I'll extract and summarize the content.
+* **🌐 Process Web Content**: Share a website URL or YouTube video and we can chat about it.
 
-## My commands:
+## Commands:
 
-* `/help`: Shows this help message.
-* `/createthread <name>`: Creates a new thread with the given name, where I'll respond to every message.
-* `/sync`: Syncs the slash commands (owner only).
-* Write a message containing "CLEAR HISTORY", "CLEAN HISTORY", "FORGET HISTORY" or "RESET HISTORY" to clear the message history (the message has to be in all caps, to avoid accidental clearing).
+* `/help` - Shows this help message
+* `/createthread <name>` - Creates a thread where I'll respond to every message
+* `/thinking <level>` - Sets my thinking/reasoning depth:
+  * `minimal` - Fastest responses, less reasoning (default)
+  * `low` - Fast, simple reasoning
+  * `medium` - Balanced thinking
+  * `high` - Deep reasoning
+* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset.
+* `/image <prompt> [image1] [image2] [image3] [aspect_ratio]` - Generate or edit images:
+  * `prompt` - What to generate or how to edit (required)
+  * `image1/2/3` - Images to edit (optional, attach up to 3)
+  * `aspect_ratio` - Output size: 1:1, 16:9, 9:16, 4:3, 3:4 (optional, default: 1:1)
+* `/forget` - Clears your message history with me
+* `/sync` - Syncs slash commands (owner only)
 
--# *Note:* I'm still under development, so I might not always get things right. 
--# *Note 2:* There currently isn't chat history support for images.
-"""
+-# *Note:* I'm still under development, so I might not always get things right."""
