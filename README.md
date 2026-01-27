@@ -5,7 +5,7 @@
     <img
     alt="Techiee logo showing a star with 8 sides and rounded corners, with a gradient color going from blue to purple to orange. To the right of the star is the text 'Techiee.py' written in a semibold and rounded font."
     src="/assets/Techiee-light.png"
-    style="width: 80%; height: auto;"
+    style="width: 75%; height: auto;"
     >
   </picture>
 </div>
@@ -58,7 +58,7 @@ You can tweak all bot settings, including safety filters, model parameters, and 
           <img
             alt="Paper icon with gradient colors, to the right of it is the text 'Setup'"
             src="/assets/Setup-light.png"
-            style="height: 90px; width: auto;"
+            style="max-height: 90px; width: auto; max-width: 100%;"
           >
         </picture>
         <br>
@@ -73,7 +73,7 @@ You can tweak all bot settings, including safety filters, model parameters, and 
           <img
             alt="Paper icon with gradient colors, to the right of it is the text 'Changelogs'"
             src="/assets/Changelogs-light.png"
-            style="height: 90px; width: auto;"
+            style="max-height: 90px; width: auto; max-width: 100%;"
           >
         </picture>
         <br>
@@ -84,6 +84,7 @@ You can tweak all bot settings, including safety filters, model parameters, and 
 </table>
 
 </div>
+
 
 ---
 
