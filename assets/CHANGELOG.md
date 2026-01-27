@@ -18,6 +18,7 @@
 
 ### Fixed
 - **Bot Mention Support**: Bot now responds when @ mentioned in any channel, as intended.
+- **Public Thread Creation**: Threads are now created as public instead of private, as intended.
 
 ## [2.2.0] - 2026-01-26
 
