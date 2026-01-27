@@ -100,32 +100,73 @@ async def wait_for_file_active(uploaded_file, max_wait_seconds=120, poll_interva
 
 
 # --- Message History ---
+# History now stores Content objects to support multimodal conversations
+# Each Content has a role ("user" or "model") and a list of Parts
 
-def update_message_history(user_id, text):
-    """Update message history for a user."""
-    # Skip None values to prevent join errors later
-    if text is None:
+def update_message_history(user_id, content):
+    """Update message history with a Content object.
+    
+    Args:
+        user_id: The user's ID
+        content: A Content object (with role and parts)
+    """
+    if content is None:
         return
     if user_id in message_history:
-        message_history[user_id].append(text)
+        message_history[user_id].append(content)
         if len(message_history[user_id]) > max_history:
             message_history[user_id].pop(0)
     else:
-        message_history[user_id] = [text]
+        message_history[user_id] = [content]
 
 
-def get_formatted_message_history(user_id):
-    """Get formatted message history for a user."""
-    if user_id in message_history:
-        return '\n\n'.join(message_history[user_id])
-    else:
-        return "No messages found for this user."
+def get_message_history_contents(user_id):
+    """Get message history as a list of Content objects for Gemini API.
+    
+    Returns:
+        List of Content objects, or empty list if no history.
+    """
+    return message_history.get(user_id, [])
+
+
+def create_user_content(parts):
+    """Create a user Content object from parts.
+    
+    Args:
+        parts: A list of Part objects (text, image, file, etc.)
+    
+    Returns:
+        Content object with role="user"
+    """
+    return Content(role="user", parts=parts)
+
+
+def create_model_content(text):
+    """Create a model Content object from text response.
+    
+    Args:
+        text: The model's text response
+    
+    Returns:
+        Content object with role="model"
+    """
+    if text is None:
+        return None
+    return Content(role="model", parts=[Part.from_text(text)])
 
 
 # --- Response Generation Functions ---
 
-async def generate_response_with_text(message_text, settings):
-    """Generate a response for text-only input (with Google Search grounding)."""
+async def generate_response_with_text(contents, settings):
+    """Generate a response for text input with optional history.
+    
+    Args:
+        contents: Either a string (single message) or list of Content objects (with history)
+        settings: User/thread settings dict
+    
+    Returns:
+        Response text string
+    """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -135,7 +176,7 @@ async def generate_response_with_text(message_text, settings):
         response = await asyncio.to_thread(
             client.models.generate_content,
             model=gemini_model,
-            contents=message_text,
+            contents=contents,
             config=create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
@@ -150,8 +191,18 @@ async def generate_response_with_text(message_text, settings):
         return "❌ Exception: " + str(e)
 
 
-async def process_image_attachment(attachment, user_text, settings):
-    """Process an image attachment using the Files API."""
+async def process_image_attachment(attachment, user_text, settings, history=None):
+    """Process an image attachment using the Files API with optional history.
+    
+    Args:
+        attachment: Discord attachment object
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+    
+    Returns:
+        Tuple of (response_text, user_content_parts, uploaded_file) for history tracking
+    """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -160,7 +211,7 @@ async def process_image_attachment(attachment, user_text, settings):
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
                 if resp.status != 200:
-                    return "❌ Unable to download the image."
+                    return ("❌ Unable to download the image.", None, None)
                 image_data = await resp.read()
         
         # Create a temporary file and upload to Gemini
@@ -174,30 +225,49 @@ async def process_image_attachment(attachment, user_text, settings):
             
             prompt = user_text if user_text else default_image_prompt
             
+            # Build user content parts for this message
+            user_parts = [
+                Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
+                Part.from_text(prompt)
+            ]
+            
+            # Build contents: history + current message
+            if history:
+                contents = history + [Content(role="user", parts=user_parts)]
+            else:
+                contents = user_parts
+            
             # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
             response = await asyncio.to_thread(
                 client.models.generate_content,
                 model=gemini_model,
-                contents=[
-                    Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
-                    prompt
-                ],
+                contents=contents,
                 config=create_generate_config(
                     system_instruction=effective_system_instruction,
                     thinking_level=thinking_level,
                 )
             )
-            return response.text
+            return (response.text, user_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
             
     except Exception as e:
-        return "❌ Exception: " + str(e)
+        return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_video_attachment(attachment, user_text, settings):
-    """Process a video attachment using the Files API with proper state waiting."""
+async def process_video_attachment(attachment, user_text, settings, history=None):
+    """Process a video attachment using the Files API with proper state waiting.
+    
+    Args:
+        attachment: Discord attachment object
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+    
+    Returns:
+        Tuple of (response_text, user_content_parts, uploaded_file) for history tracking
+    """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -206,7 +276,7 @@ async def process_video_attachment(attachment, user_text, settings):
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
                 if resp.status != 200:
-                    return "❌ Unable to download the video."
+                    return ("❌ Unable to download the video.", None, None)
                 video_data = await resp.read()
         
         # Create a temporary file and upload to Gemini
@@ -225,30 +295,49 @@ async def process_video_attachment(attachment, user_text, settings):
             
             prompt = user_text if user_text else "What is this video about? Summarize it for me."
             
+            # Build user content parts for this message
+            user_parts = [
+                Part.from_uri(file_uri=active_file.uri, mime_type=active_file.mime_type),
+                Part.from_text(prompt)
+            ]
+            
+            # Build contents: history + current message
+            if history:
+                contents = history + [Content(role="user", parts=user_parts)]
+            else:
+                contents = user_parts
+            
             # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
             response = await asyncio.to_thread(
                 client.models.generate_content,
                 model=gemini_model,
-                contents=[
-                    Part.from_uri(file_uri=active_file.uri, mime_type=active_file.mime_type),
-                    prompt
-                ],
+                contents=contents,
                 config=create_generate_config(
                     system_instruction=effective_system_instruction,
                     thinking_level=thinking_level,
                 )
             )
-            return response.text
+            return (response.text, user_parts, active_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
             
     except Exception as e:
-        return "❌ Exception: " + str(e)
+        return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_file_attachment(attachment, user_text, settings):
-    """Process PDF or text file attachments using the Files API."""
+async def process_file_attachment(attachment, user_text, settings, history=None):
+    """Process PDF or text file attachments using the Files API.
+    
+    Args:
+        attachment: Discord attachment object
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+    
+    Returns:
+        Tuple of (response_text, user_content_parts, uploaded_file) for history tracking
+    """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -257,7 +346,7 @@ async def process_file_attachment(attachment, user_text, settings):
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
                 if resp.status != 200:
-                    return "❌ Unable to download the attachment."
+                    return ("❌ Unable to download the attachment.", None, None)
                 file_data = await resp.read()
         
         # Create a temporary file and upload to Gemini
@@ -271,58 +360,94 @@ async def process_file_attachment(attachment, user_text, settings):
             
             prompt = user_text if user_text else default_pdf_and_txt_prompt
             
+            # Build user content parts for this message
+            user_parts = [
+                Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
+                Part.from_text(prompt)
+            ]
+            
+            # Build contents: history + current message
+            if history:
+                contents = history + [Content(role="user", parts=user_parts)]
+            else:
+                contents = user_parts
+            
             # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
             response = await asyncio.to_thread(
                 client.models.generate_content,
                 model=gemini_model,
-                contents=[
-                    Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
-                    prompt
-                ],
+                contents=contents,
                 config=create_generate_config(
                     system_instruction=effective_system_instruction,
                     thinking_level=thinking_level,
                 )
             )
-            return response.text
+            return (response.text, user_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
             
     except Exception as e:
-        return "❌ Exception: " + str(e)
+        return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_youtube_url(url, user_text, settings):
-    """Process YouTube video URL using FileData."""
+async def process_youtube_url(url, user_text, settings, history=None):
+    """Process YouTube video URL using FileData.
+    
+    Args:
+        url: YouTube URL
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+    
+    Returns:
+        Tuple of (response_text, user_content_parts) for history tracking
+    """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
         
         prompt = user_text.replace(url, "").strip() if user_text else default_url_prompt
         
+        # Build user content parts for this message
+        user_parts = [
+            Part(file_data=types.FileData(file_uri=url)),
+            Part(text=prompt)
+        ]
+        
+        # Build contents: history + current message
+        if history:
+            contents = history + [Content(role="user", parts=user_parts)]
+        else:
+            contents = Content(role="user", parts=user_parts)
+        
         # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
         response = await asyncio.to_thread(
             client.models.generate_content,
             model=gemini_model,
-            contents=Content(
-                parts=[
-                    Part(file_data=types.FileData(file_uri=url)),
-                    Part(text=prompt)
-                ]
-            ),
+            contents=contents,
             config=create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
         )
-        return response.text
+        return (response.text, user_parts)
     except Exception as e:
-        return "❌ Exception: " + str(e)
+        return ("❌ Exception: " + str(e), None)
 
 
-async def process_website_url(url, user_text, settings):
-    """Process website URL using URL context tool."""
+async def process_website_url(url, user_text, settings, history=None):
+    """Process website URL using URL context tool.
+    
+    Args:
+        url: Website URL
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+    
+    Returns:
+        Tuple of (response_text, user_content_parts) for history tracking
+    """
     try:
         effective_system_instruction = get_effective_system_instruction(settings)
         thinking_level = settings.get("thinking_level", "minimal")
@@ -333,20 +458,29 @@ async def process_website_url(url, user_text, settings):
         if user_text and url not in user_text:
             prompt = f"{user_text} {url}"
         
+        # Build user content parts for this message
+        user_parts = [Part.from_text(prompt)]
+        
+        # Build contents: history + current message
+        if history:
+            contents = history + [Content(role="user", parts=user_parts)]
+        else:
+            contents = prompt  # URL context tool works with string
+        
         # Run in thread to prevent blocking the event loop (keeps typing indicator alive)
         response = await asyncio.to_thread(
             client.models.generate_content,
             model=gemini_model,
-            contents=prompt,
+            contents=contents,
             config=create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
                 tools=[url_context_tool],
             )
         )
-        return response.text
+        return (response.text, user_parts)
     except Exception as e:
-        return "❌ Exception: " + str(e)
+        return ("❌ Exception: " + str(e), None)
 
 
 async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):

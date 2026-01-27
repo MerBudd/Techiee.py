@@ -3,11 +3,15 @@ Text processor cog - Handles text-only chat messages.
 """
 from discord.ext import commands
 
+from google.genai.types import Part
+
 from utils.helpers import split_and_send_messages
 from utils.gemini import (
     generate_response_with_text,
     update_message_history,
-    get_formatted_message_history,
+    get_message_history_contents,
+    create_user_content,
+    create_model_content,
 )
 from config import max_history
 
@@ -28,11 +32,21 @@ class TextProcessor(commands.Cog):
             await split_and_send_messages(message, response_text, 1900)
             return
         
-        # Add user's question to history
-        update_message_history(message.author.id, cleaned_text)
-        response_text = await generate_response_with_text(get_formatted_message_history(message.author.id), settings)
-        # Add AI response to history
-        update_message_history(message.author.id, response_text)
+        # Create user content with text part
+        user_content = create_user_content([Part.from_text(cleaned_text)])
+        
+        # Get existing history and add new user message
+        history = get_message_history_contents(message.author.id)
+        contents = history + [user_content]
+        
+        # Generate response with full history context
+        response_text = await generate_response_with_text(contents, settings)
+        
+        # Add user message and AI response to history
+        update_message_history(message.author.id, user_content)
+        model_content = create_model_content(response_text)
+        update_message_history(message.author.id, model_content)
+        
         await split_and_send_messages(message, response_text, 1900)
 
 
