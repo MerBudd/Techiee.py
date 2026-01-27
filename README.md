@@ -4,7 +4,7 @@
     <source media="(prefers-color-scheme: light)" srcset="/assets/Techiee%20combo%20dark.png">
     <img
     alt="Techiee logo showing a star with 8 sides and rounded corners, with a gradient color going from blue to purple to orange. To the right of the star is the text 'Techiee.py' written in a semibold and rounded font."
-    src="default-image.png"
+    src="/assets/Techiee%20combo%20light.png"
     style="width: 80%; height: auto;"
     >
   </picture>

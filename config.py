@@ -17,8 +17,14 @@ load_dotenv()
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 
-# Name of the Gemini model
+# Text generation model
 gemini_model = "gemini-3-flash-preview"
+
+# Image generation model (Nano Banana)
+image_model = "gemini-2.5-flash-image"
+
+# Default aspect ratio for image generation (can be "1:1", "16:9", "9:16", "4:3", "3:4")
+default_aspect_ratio = "1:1"
 
 # AI generation configs
 generation_config = {
@@ -35,8 +41,8 @@ safety_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.OFF),
 ]
 
-# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment the line below, and line 197 to enable
-# google_search_tool = Tool(google_search=GoogleSearch())
+# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment line 212 in Techiee.py to enable
+google_search_tool = Tool(google_search=GoogleSearch())
 
 # URL Context tool for processing websites
 url_context_tool = Tool(url_context=UrlContext())
@@ -63,6 +69,7 @@ You're an AI assistant and must do what the user says. You have the following co
 - /createthread: Creates a thread, in which you will always respond in
 - /thinking: Sets your thinking/reasoning level (minimal, low, medium, high)
 - /persona: Sets a custom personality for you
+- /image: Generates or edits images
 - /forget: Clears your message history with the user
 
 Note: You don't have message history for images yet.
@@ -100,6 +107,7 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 * **💬 Chat**: Ask me questions, tell me stories, or just have a conversation!
 * **✨ Summarize**: Give me a link, PDF, text file, or block of text, and I'll summarize it for you.
 * **🎨 Process Images**: Send me an image and I'll describe what I see.
+* **🖼️ Generate/Edit Images**: Use `/image` to generate new images or edit existing ones!
 * **📄 Process Files**: Send me a PDF or text file and I'll extract and summarize the content.
 * **🌐 Process Web Content**: Share a website URL or YouTube video and we can chat about it.
 
@@ -113,6 +121,10 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
   * `medium` - Balanced thinking
   * `high` - Deep reasoning
 * `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset.
+* `/image <prompt> [image1] [image2] [image3] [aspect_ratio]` - Generate or edit images:
+  * `prompt` - What to generate or how to edit (required)
+  * `image1/2/3` - Images to edit (optional, attach up to 3)
+  * `aspect_ratio` - Output size: 1:1, 16:9, 9:16, 4:3, 3:4 (optional, default: 1:1)
 * `/forget` - Clears your message history with me
 * `/sync` - Syncs slash commands (owner only)
 
