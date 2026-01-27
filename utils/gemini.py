@@ -152,7 +152,7 @@ def create_model_content(text):
     """
     if text is None:
         return None
-    return Content(role="model", parts=[Part.from_text(text)])
+    return Content(role="model", parts=[Part(text=text)])
 
 
 # --- Response Generation Functions ---
@@ -228,7 +228,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             # Build user content parts for this message
             user_parts = [
                 Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
-                Part.from_text(prompt)
+                Part(text=prompt)
             ]
             
             # Build contents: history + current message
@@ -298,7 +298,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             # Build user content parts for this message
             user_parts = [
                 Part.from_uri(file_uri=active_file.uri, mime_type=active_file.mime_type),
-                Part.from_text(prompt)
+                Part(text=prompt)
             ]
             
             # Build contents: history + current message
@@ -363,7 +363,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
             # Build user content parts for this message
             user_parts = [
                 Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
-                Part.from_text(prompt)
+                Part(text=prompt)
             ]
             
             # Build contents: history + current message
@@ -459,7 +459,7 @@ async def process_website_url(url, user_text, settings, history=None):
             prompt = f"{user_text} {url}"
         
         # Build user content parts for this message
-        user_parts = [Part.from_text(prompt)]
+        user_parts = [Part(text=prompt)]
         
         # Build contents: history + current message
         if history:

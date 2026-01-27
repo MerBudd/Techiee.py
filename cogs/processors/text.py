@@ -33,7 +33,7 @@ class TextProcessor(commands.Cog):
             return
         
         # Create user content with text part
-        user_content = create_user_content([Part.from_text(cleaned_text)])
+        user_content = create_user_content([Part(text=cleaned_text)])
         
         # Get existing history and add new user message
         history = get_message_history_contents(message.author.id)
