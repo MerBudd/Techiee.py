@@ -26,4 +26,4 @@ You can put channel ID(s) in which Techiee will always check for messages and re
    ```
 
 > [!NOTE]
-> Grounding with Google Search currently requires a paid API tier and is disabled by default in Techiee. Please un-comment line 197 in `Techiee.py` and line 39 in `config.py` to enable it.
+> Grounding with Google Search currently requires a paid API tier and is disabled by default in Techiee. Please un-comment line 142 in `utils/gemini.py` to enable it.
