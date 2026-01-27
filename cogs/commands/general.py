@@ -24,7 +24,7 @@ class General(commands.Cog):
     async def create_thread(self, interaction: discord.Interaction, name: str):
         # Create a tracked thread for bot conversations.
         try:
-            thread = await interaction.channel.create_thread(name=name, auto_archive_duration=60)
+            thread = await interaction.channel.create_thread(name=name, type=discord.ChannelType.public_thread, auto_archive_duration=60)
             tracked_threads.append(thread.id)
             await interaction.response.send_message(f"Thread '{name}' created! Go to <#{thread.id}> to join the thread and chat with me there.")
         except Exception as e:
