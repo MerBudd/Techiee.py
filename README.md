@@ -10,9 +10,9 @@
   </picture>
 </div>
 
-## <img src="/assets/Techiee-star.png" width="30" height="30" align=top> What is Techiee?
+## <img src="/assets/Techiee-star.png" width="30" height="30" align=top> What is Techiee? <img src="/assets/Techiee-star.png" width="30" height="30" align=top>
 
-Techiee is an advanced Discord chatbot built on Google's Gemini models. Techiee is multimodal; which means it can understand text, images, videos, documents, websites, and even YouTube videos, together, directly within your Discord server.
+Techiee is an advanced Discord chatbot built on Google's Gemini models. It is multimodal; which means it can understand text, images, videos, documents, websites, and even YouTube videos, together, directly within your Discord server.
 
 This is the Python version of Techiee. It has been completely rewritten to support the latest Gemini 3 models and multimodal capabilities.
 
@@ -34,8 +34,6 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 
 You can tweak all bot settings, including safety filters, model parameters, and tracked channels, inside the [config.py](config.py) file.
 
-For detailed installation instructions, check out [SETUP.md](/assets/SETUP.md).
-
 ## Commands
 
 - `/help`: Shows available commands and bot information.
@@ -46,17 +44,47 @@ For detailed installation instructions, check out [SETUP.md](/assets/SETUP.md).
 - `/image`: Generates or edits an image using Nano Banana (requires paid API key).
 - `/sync`: Syncs slash commands globally (Owner only).
 
-## Changelogs
+---
 
-For a list of changes, check out [<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="/assets/Changelogs-light.png">
-    <source media="(prefers-color-scheme: light)" srcset="/assets/Changelogs-dark.png">
-    <img
-    alt="Paper icon with gradient colors, to the right of it is the text 'Changelogs'"
-    src="/assets/Changelogs-light.png"
-    style="width: 80%; height: auto;"
-    >
-  </picture>](/assets/CHANGELOG.md).
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="/assets/SETUP.md">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="/assets/Setup-light.png">
+          <source media="(prefers-color-scheme: light)" srcset="/assets/Setup-dark.png">
+          <img
+            alt="Paper icon with gradient colors, to the right of it is the text 'Setup'"
+            src="/assets/Setup-light.png"
+            style="height: 100px"
+          >
+        </picture>
+        <br>
+        <strong>Detailed installation instructions</strong>
+      </a>
+    </td>
+    <td align="center">
+      <a href="/assets/CHANGELOG.md">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="/assets/Changelogs-light.png">
+          <source media="(prefers-color-scheme: light)" srcset="/assets/Changelogs-dark.png">
+          <img
+            alt="Paper icon with gradient colors, to the right of it is the text 'Changelogs'"
+            src="/assets/Changelogs-light.png"
+            style="height: 100px"
+          >
+        </picture>
+        <br>
+        <strong>List of changes</strong>
+      </a>
+    </td>
+  </tr>
+</table>
+
+</div>
 
 ---
+
 *Developed by Budd (@merbudd) and Tech (@techgamerexpert).*
