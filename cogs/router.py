@@ -30,9 +30,12 @@ class Router(commands.Cog):
         # Ignore other bots
         if message.author.bot:
             return
+        
+        # Check if bot was mentioned in the message
+        bot_mentioned = self.bot.user in message.mentions
 
-        # Check if the message is a DM or in tracked channels/threads
-        if isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads:
+        # Check if the message is a DM, in tracked channels/threads, or mentions the bot
+        if isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads or bot_mentioned:
             cleaned_text = clean_discord_message(message.content)
             
             # Get settings for this context

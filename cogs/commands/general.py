@@ -17,12 +17,12 @@ class General(commands.Cog):
     
     @app_commands.command(name='help', description='Shows help(ful) info and commands for Techiee.')
     async def help(self, interaction: discord.Interaction):
-        """Display help information."""
+        # Display help information.
         await interaction.response.send_message(help_text)
     
-    @app_commands.command(name='createthread', description='Create a thread in which bot will respond to every message.')
+    @app_commands.command(name='createthread', description='Create a thread in which Techiee will respond to every message.')
     async def create_thread(self, interaction: discord.Interaction, name: str):
-        """Create a tracked thread for bot conversations."""
+        # Create a tracked thread for bot conversations.
         try:
             thread = await interaction.channel.create_thread(name=name, auto_archive_duration=60)
             tracked_threads.append(thread.id)
@@ -32,7 +32,7 @@ class General(commands.Cog):
     
     @app_commands.command(name='forget', description='Clear your message history with Techiee.')
     async def forget(self, interaction: discord.Interaction):
-        """Clear the user's message history."""
+        # Clear the user's message history.
         user_id = interaction.user.id
         if user_id in message_history:
             del message_history[user_id]

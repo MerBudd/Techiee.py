@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.0] - 2026-01-27
+
+### Added
+- **Image Generation**: Added `/image` command to generate or edit images using Nano Banana. Note: Requires a paid API key, will return error 429 with a free key.
+- **Modular Cog Architecture**: Completely reorganized codebase into Discord.py cogs for better maintainability.
+  - **Processors** (`cogs/processors/`): Separate cogs for each content type (text, images, videos, files, YouTube, websites).
+  - **Commands** (`cogs/commands/`): Logically grouped slash commands (admin, general, settings, image_gen).
+  - **Router** (`cogs/router.py`): Central message dispatcher that routes to appropriate processors.
+  - **Utils** (`utils/`): Shared utilities for Gemini API calls and helper functions.
+
+### Changed
+- **Main File**: Reduced from ~880 lines to ~75 lines, now just loads cogs.
+- **Code Organization**: AI generation logic in `utils/gemini.py`, routing logic in cogs.
+
+### Fixed
+- **Bot Mention Support**: Bot now responds when @ mentioned in any channel, as intended.
+
 ## [2.2.0] - 2026-01-26
 
 ### Added

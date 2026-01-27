@@ -16,7 +16,7 @@ class ImageGen(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.command(name='image', description='Generate or edit images using AI.')
+    @app_commands.command(name='image', description='Generate or edit images using AI. Note: Requires a paid API key.')
     @app_commands.describe(
         prompt='What to generate or how to edit the image(s)',
         image1='First image to edit (optional)',

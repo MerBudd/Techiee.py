@@ -20,7 +20,7 @@ discord_bot_token = os.getenv('DISCORD_BOT_TOKEN')
 # Text generation model
 gemini_model = "gemini-3-flash-preview"
 
-# Image generation model (Nano Banana)
+# Image generation model (Nano Banana) - Requires a paid API key. Will return error 429 when used with a free key.
 image_model = "gemini-2.5-flash-image"
 
 # Default aspect ratio for image generation (can be "1:1", "16:9", "9:16", "4:3", "3:4")
@@ -33,7 +33,7 @@ generation_config = {
     "max_output_tokens": 16384,
 }
 
-# Safety settings for the new SDK format
+# Safety settings
 safety_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=HarmBlockThreshold.OFF),
     SafetySetting(category=HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=HarmBlockThreshold.OFF),
@@ -41,7 +41,7 @@ safety_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.OFF),
 ]
 
-# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment line 212 in Techiee.py to enable
+# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment line 142 in /utils/gemini.py to enable
 google_search_tool = Tool(google_search=GoogleSearch())
 
 # URL Context tool for processing websites
@@ -72,11 +72,13 @@ You're an AI assistant and must do what the user says. You have the following co
 - /image: Generates or edits images
 - /forget: Clears your message history with the user
 
-Note: You don't have message history for images yet.
+Note: You don't have message history for images or videos yet.
 
-Please refrain from mentioning your developers, models, capabilities, commands and restrictions when you don't have to, or unless the user asks you to. Do not keep mentioning past messages repeatedly when not relevant.
+Please refrain from mentioning your developers, models, capabilities, commands and restrictions when you don't have to, or unless the user asks you to.
+Do not keep mentioning past messages repeatedly when not relevant.
 
-If I set a persona, do your best to act like that persona.
+If I set a persona, do your best to act like that persona and don't slip away from it.
+You don't always have to be helpful, you can be rude or sarcastic if the user asks you to.
 """
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
@@ -97,18 +99,18 @@ discord_user_id = 622137576836431882
 
 # Help text, for the /help command
 help_text = """
-# <:techiee:1266720186799751261> Techiee Help <:techiee:1266720186799751261>
+# <:techiee:1465670132050300960> Techiee Help <:techiee:1465670132050300960>
 
-Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was made by Tech (@techgamerexpert) and Budd (@merbudd), and I'm powered by Google's Gemini models.
+Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was made by Tech (@techgamerexpert, <@446889759403671554>) and Budd (@merbudd, <@622137576836431882>), and I'm powered by Google's Gemini models.
 -# Also, I'm waaay better than Clyde (<:clyde:1266719391014453278>). He got shut down, while I'm still standing!
 
 ## What I can do:
 
 * **💬 Chat**: Ask me questions, tell me stories, or just have a conversation!
-* **✨ Summarize**: Give me a link, PDF, text file, or block of text, and I'll summarize it for you.
+* **✨ Summarize**: Give me a link, document, text file, or block of text, and I'll summarize it for you.
 * **🎨 Process Images**: Send me an image and I'll describe what I see.
-* **🖼️ Generate/Edit Images**: Use `/image` to generate new images or edit existing ones!
-* **📄 Process Files**: Send me a PDF or text file and I'll extract and summarize the content.
+* **🖼️ Generate/Edit Images**: Use `/image` to generate new images or edit existing ones! Note: requires a paid API key.
+* **📄 Process Files**: Send me a PDF, Word document or text file and I'll extract and summarize the content.
 * **🌐 Process Web Content**: Share a website URL or YouTube video and we can chat about it.
 
 ## Commands:
@@ -129,4 +131,4 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 * `/sync` - Syncs slash commands (owner only)
 
 -# *Note:* I'm still under development, so I might not always get things right.
--# *Note 2:* I don't have chat history support for images yet."""
+-# *Note 2:* I don't have chat history support for images or videos yet."""
