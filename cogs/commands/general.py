@@ -5,8 +5,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import help_text
-from utils.gemini import tracked_threads, message_history
+from config import help_text, tracked_channels
+from utils.gemini import tracked_threads, message_history, get_history_key
 
 
 class General(commands.Cog):
@@ -32,13 +32,33 @@ class General(commands.Cog):
     
     @app_commands.command(name='forget', description='Clear your message history with Techiee.')
     async def forget(self, interaction: discord.Interaction):
-        # Clear the user's message history.
+        """Clear message history for the current context."""
+        # Determine the appropriate history key based on context
+        channel_id = interaction.channel.id
         user_id = interaction.user.id
-        if user_id in message_history:
-            del message_history[user_id]
-            await interaction.response.send_message(f"🧼 History cleared for {interaction.user.name}!")
+        
+        # Thread context
+        if channel_id in tracked_threads:
+            history_key = ("thread", channel_id)
+            scope_msg = "this thread"
+        # DM context
+        elif isinstance(interaction.channel, discord.DMChannel):
+            history_key = ("dm", user_id)
+            scope_msg = "your DMs"
+        # Tracked channel context
+        elif channel_id in tracked_channels:
+            history_key = ("tracked", user_id)
+            scope_msg = "this channel"
         else:
-            await interaction.response.send_message("📭 You don't have any history to clear.")
+            # @mention context - global per-user history
+            history_key = ("mention", user_id)
+            scope_msg = "your @mentions"
+        
+        if history_key in message_history:
+            del message_history[history_key]
+            await interaction.response.send_message(f"🧼 History cleared for {scope_msg}!")
+        else:
+            await interaction.response.send_message("📭 No history to clear in this context.")
 
 
 async def setup(bot):

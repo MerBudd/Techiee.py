@@ -25,20 +25,20 @@ class ImageProcessor(commands.Cog):
         print(f"New Image Message FROM: {message.author.name} : {cleaned_text}")
         print("Processing Image")
         
-        # Get history if enabled
-        history = get_message_history_contents(message.author.id) if max_history > 0 else None
+        # Get history if enabled (context-aware)
+        history = get_message_history_contents(message) if max_history > 0 else None
         
         # Process image with history context
         response_text, history_parts, uploaded_file = await process_image_attachment(
             attachment, cleaned_text, settings, history
         )
         
-        # Update history with this interaction (using sanitized text-only parts)
+        # Update history with this interaction (context-aware, using sanitized text-only parts)
         if max_history > 0 and history_parts is not None:
             user_content = create_user_content(history_parts)
-            update_message_history(message.author.id, user_content)
+            update_message_history(message, user_content)
             model_content = create_model_content(response_text)
-            update_message_history(message.author.id, model_content)
+            update_message_history(message, model_content)
         
         await split_and_send_messages(message, response_text, 1900)
 

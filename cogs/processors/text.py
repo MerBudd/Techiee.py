@@ -35,17 +35,17 @@ class TextProcessor(commands.Cog):
         # Create user content with text part
         user_content = create_user_content([Part(text=cleaned_text)])
         
-        # Get existing history and add new user message
-        history = get_message_history_contents(message.author.id)
+        # Get existing history (context-aware) and add new user message
+        history = get_message_history_contents(message)
         contents = history + [user_content]
         
         # Generate response with full history context
         response_text = await generate_response_with_text(contents, settings)
         
-        # Add user message and AI response to history
-        update_message_history(message.author.id, user_content)
+        # Add user message and AI response to history (context-aware)
+        update_message_history(message, user_content)
         model_content = create_model_content(response_text)
-        update_message_history(message.author.id, model_content)
+        update_message_history(message, model_content)
         
         await split_and_send_messages(message, response_text, 1900)
 

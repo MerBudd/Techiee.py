@@ -217,33 +217,71 @@ async def wait_for_file_active(uploaded_file, max_wait_seconds=120, poll_interva
 
 
 # --- Message History ---
-# History now stores Content objects to support multimodal conversations
-# Each Content has a role ("user" or "model") and a list of Parts
+# History is scoped by context to prevent persona leakage:
+# - Threads: keyed by thread_id (shared by all users in thread)
+# - DMs: keyed by user_id
+# - Tracked channels: keyed by user_id
+# - @mentions elsewhere: global per-user history (shared across all non-tracked channels)
 
-def update_message_history(user_id, content):
+def get_history_key(message):
+    """Get the appropriate history key for the current context.
+    
+    Returns:
+        A tuple key for message_history dict.
+        - Thread: ("thread", thread_id)
+        - DM: ("dm", user_id)
+        - Tracked channel: ("tracked", user_id)
+        - @mention elsewhere: ("mention", user_id) - global per-user
+    """
+    import discord
+    
+    # Thread: use thread_id (shared history for all users in thread)
+    if message.channel.id in tracked_threads:
+        return ("thread", message.channel.id)
+    
+    # DM: use user_id
+    if isinstance(message.channel, discord.DMChannel):
+        return ("dm", message.author.id)
+    
+    # Tracked channel: use user_id
+    if message.channel.id in tracked_channels:
+        return ("tracked", message.author.id)
+    
+    # @mention elsewhere: global per-user history (shared across all non-tracked channels)
+    return ("mention", message.author.id)
+
+
+def update_message_history(message, content):
     """Update message history with a Content object.
     
     Args:
-        user_id: The user's ID
+        message: The Discord message object (used to determine context)
         content: A Content object (with role and parts)
     """
     if content is None:
         return
-    if user_id in message_history:
-        message_history[user_id].append(content)
-        if len(message_history[user_id]) > max_history:
-            message_history[user_id].pop(0)
+    
+    history_key = get_history_key(message)
+    
+    if history_key in message_history:
+        message_history[history_key].append(content)
+        if len(message_history[history_key]) > max_history:
+            message_history[history_key].pop(0)
     else:
-        message_history[user_id] = [content]
+        message_history[history_key] = [content]
 
 
-def get_message_history_contents(user_id):
+def get_message_history_contents(message):
     """Get message history as a list of Content objects for Gemini API.
+    
+    Args:
+        message: The Discord message object (used to determine context)
     
     Returns:
         List of Content objects, or empty list if no history.
     """
-    return message_history.get(user_id, [])
+    history_key = get_history_key(message)
+    return message_history.get(history_key, [])
 
 
 def create_user_content(parts):
