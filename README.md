@@ -1,4 +1,4 @@
-# <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="40" height="40" align=top> Techiee.py
+# This branch is no longer maintained. Please move to [the main branch](https://github.com/MerBudd/Techiee.py/tree/main) instead for the latest version of Techiee with tons of updates.
 
 ## <img src="https://github.com/MerBudd/Techiee.js/assets/82082386/43cc9180-c22f-4418-8949-9834a5066089" width="30" height="30" align=top> Techiee is an experimental Discord AI Chatbot based on Google's Gemini models.
 
