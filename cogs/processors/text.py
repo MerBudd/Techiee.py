@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from google.genai.types import Part
 
-from utils.helpers import split_and_send_messages
+from utils.retry import send_response_with_retry
 from utils.gemini import (
     generate_response_with_text,
     update_message_history,
@@ -29,7 +29,12 @@ class TextProcessor(commands.Cog):
         # Regular text conversation with history
         if max_history == 0:
             response_text = await generate_response_with_text(cleaned_text, settings)
-            await split_and_send_messages(message, response_text, 1900, message.author.id)
+            
+            # Define retry callback for no-history mode
+            async def retry_callback():
+                return await generate_response_with_text(cleaned_text, settings)
+            
+            await send_response_with_retry(message, response_text, retry_callback)
             return
         
         # Create user content with text part
@@ -42,14 +47,20 @@ class TextProcessor(commands.Cog):
         # Generate response with full history context
         response_text = await generate_response_with_text(contents, settings)
         
-        # Add user message and AI response to history (context-aware)
-        update_message_history(message, user_content)
-        model_content = create_model_content(response_text)
-        update_message_history(message, model_content)
+        # Define retry callback that re-generates with same context
+        async def retry_callback():
+            return await generate_response_with_text(contents, settings)
         
-        await split_and_send_messages(message, response_text, 1900, message.author.id)
+        # Define history update callback for when response succeeds
+        async def update_history(response_text):
+            update_message_history(message, user_content)
+            model_content = create_model_content(response_text)
+            update_message_history(message, model_content)
+        
+        await send_response_with_retry(message, response_text, retry_callback, update_history)
 
 
 async def setup(bot):
     """Setup function for loading the cog."""
     await bot.add_cog(TextProcessor(bot))
+

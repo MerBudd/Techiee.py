@@ -3,7 +3,7 @@ Image processor cog - Handles image attachment processing.
 """
 from discord.ext import commands
 
-from utils.helpers import split_and_send_messages
+from utils.retry import send_response_with_retry
 from utils.gemini import (
     process_image_attachment,
     update_message_history,
@@ -33,16 +33,25 @@ class ImageProcessor(commands.Cog):
             attachment, cleaned_text, settings, history
         )
         
-        # Update history with this interaction (context-aware, using sanitized text-only parts)
-        if max_history > 0 and history_parts is not None:
-            user_content = create_user_content(history_parts)
-            update_message_history(message, user_content)
-            model_content = create_model_content(response_text)
-            update_message_history(message, model_content)
+        # Define retry callback
+        async def retry_callback():
+            result, _, _ = await process_image_attachment(
+                attachment, cleaned_text, settings, history
+            )
+            return result
         
-        await split_and_send_messages(message, response_text, 1900, message.author.id)
+        # Define history update callback
+        async def update_history(response_text):
+            if max_history > 0 and history_parts is not None:
+                user_content = create_user_content(history_parts)
+                update_message_history(message, user_content)
+                model_content = create_model_content(response_text)
+                update_message_history(message, model_content)
+        
+        await send_response_with_retry(message, response_text, retry_callback, update_history)
 
 
 async def setup(bot):
     """Setup function for loading the cog."""
     await bot.add_cog(ImageProcessor(bot))
+
