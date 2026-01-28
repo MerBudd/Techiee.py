@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.0] - 2026-01-28
+
+### Added
+- **503 Error Retry Button**: Implemented a retry mechanism for "Server Overloaded" (503) errors.
+  - Interactive retry button with a countdown (3s).
+  - Only the original message author can use it.
+  - Automatic error handling: button updates to reflect retry status and failure counts.
+  - Error message is automatically deleted and replaced with the actual response upon successful retry.
+
 ## [2.3.0] - 2026-01-27
 
 ### Added
