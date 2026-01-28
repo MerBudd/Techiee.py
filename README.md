@@ -1,14 +1,4 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="/assets/Techiee%20combo%20light.png">
-    <source media="(prefers-color-scheme: light)" srcset="/assets/Techiee%20combo%20dark.png">
-    <img
-    alt="Techiee logo showing a star with 8 sides and rounded corners, with a gradient color going from blue to purple to orange. To the right of the star is the text 'Techiee.py' written in a semibold and rounded font."
-    src="default-image.png"
-    style="width: 80%; height: auto;"
-    >
-  </picture>
-</div>
+# This branch is no longer maintained. Please move to [the main branch](https://github.com/MerBudd/Techiee.py/tree/main) instead for the latest version of Techiee with tons of updates.
 
 ## <img src="/assets/Techiee%20star%20symbol.png" width="30" height="30" align=top> What is Techiee?
 
