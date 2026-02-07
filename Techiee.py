@@ -40,6 +40,8 @@ COGS = [
     "cogs.processors.websites",
     # Router - message dispatcher (must load after processors)
     "cogs.router",
+    # Reactions - handles reaction-based actions
+    "cogs.reactions",
     # Commands
     "cogs.commands.admin",
     "cogs.commands.general",

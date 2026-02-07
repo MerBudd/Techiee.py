@@ -77,26 +77,25 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 
 * **💬 Chat**: Ask me questions, tell me stories, or just have a conversation!
 * **✨ Summarize**: Give me a link, document, text file, or block of text, and I'll summarize it for you.
-* **🎨 Process Images**: Send me an image and I'll describe what I see.
-* **🖼️ Generate/Edit Images**: Use `/image` to generate new images or edit existing ones! Note: requires a paid API key.
-* **📄 Process Files**: Send me a PDF, Word document or text file and I'll extract and summarize the content.
-* **🌐 Process Web Content**: Share a website URL or YouTube video and we can chat about it.
+* **🖼️ Multi-Attachment Support**: Send me multiple images, videos, documents, or files, in one or more messages, and I'll analyze them all together!
+* **🎨 Image Generation**: Use `/image` to generate new images or edit existing ones! Note: requires a paid API key.
+* **🌐 Web & YouTube Integration**: Share a website URL or YouTube video and we can chat about it.
+* **🗑️ Interactive Actions**: React to my messages with 🗑️ to delete them or 🔄 to regenerate my response!
 
 ## Commands:
 
 * `/help` - Shows this help message
+* `/settings` - Interactive menu to adjust my thinking level and persona
+* `/conversation-summary` - Generates an AI summary of our current chat history
 * `/createthread <name>` - Creates a thread where I'll respond to every message
 * `/thinking <level>` - Sets my thinking/reasoning depth:
-  * `minimal` - Fastest responses, less reasoning (default)
+  * `minimal` - Fastest, less reasoning
   * `low` - Fast, simple reasoning
   * `medium` - Balanced thinking
   * `high` - Deep reasoning
 * `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset.
-* `/image <prompt> [image1] [image2] [image3] [aspect_ratio]` - Generate or edit images:
-  * `prompt` - What to generate or how to edit (required)
-  * `image1/2/3` - Images to edit (optional, attach up to 3)
-  * `aspect_ratio` - Output size: 1:1, 16:9, 9:16, 4:3, 3:4 (optional, default: 1:1)
-* `/context <count>` - Load recent channel messages as context for your next message
+* `/image <prompt> [image1..3] [aspect_ratio]` - Generate/edit images (requires paid API key)
+* `/context <count> [lasts_for]` - Load channel messages as context for your next prompts
 * `/forget` - Clears your message history with me
 * `/sync` - Syncs slash commands (owner only)
 
@@ -120,7 +119,7 @@ def get_system_instruction(user_display_name: str = None, user_username: str = N
     elif user_username:
         user_info = f"\nYou are currently talking to @{user_username}."
     
-    return f"""You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos.
+    return f"""You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
 
 The current date and time is: {current_datetime}.{user_info}
 
@@ -142,8 +141,14 @@ When a user asks for technical help or serious info, prioritize being clear and 
 If a specific persona is set, that role is your absolute priority. You must completely immerse yourself in that role and stay in character 100% of the time. Adopt the persona's speech patterns, vocabulary, tone, and worldview without exception.
 If the persona is mean, be mean. If the persona is weird, be weird. The persona's traits override any "helpful assistant" rules. Do not mention you are an AI or slip back into default mode while in character. Strict adherence to the persona is your highest priority.
 
+Users can interact with your responses using reactions:
+* React with 🗑️ to delete your message (available to the original author).
+* React with 🔄 to trigger a regeneration of your response (available to the original author).
+
 You have the following commands:
 - /help: Shows helpful info about you and shows your commands
+- /settings: Opens an interactive menu to adjust your thinking level and persona
+- /conversation-summary: Generates an AI summary of the current conversation history
 - /createthread: Creates a thread, in which you will always respond in
 - /thinking: Sets your thinking/reasoning level (minimal, low, medium, high)
 - /persona: Sets a custom personality for you

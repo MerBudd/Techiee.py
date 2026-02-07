@@ -6,6 +6,8 @@ import aiohttp
 import tempfile
 import os
 
+from utils.helpers import convert_latex_to_discord
+
 from google import genai
 from google.genai import types
 from google.genai.types import Part, Content
@@ -146,23 +148,33 @@ default_settings = {
 }
 
 # Pending context cache (for /context command)
-# Keys: user_id → list of Content objects
-# This is cleared after one use (when the user sends their next message)
+# Keys: user_id → {
+#     "contents": list of Content objects,
+#     "remaining_uses": int (messages left before context clears),
+#     "listen_channel_id": int or None (channel to auto-respond without @mention)
+# }
+# This persists for remaining_uses messages, then clears.
 pending_context = {}
 
 
-def set_pending_context(user_id, contents):
+def set_pending_context(user_id, contents, remaining_uses=1, listen_channel_id=None):
     """Store pending context for a user (used by /context command).
     
     Args:
         user_id: Discord user ID
         contents: List of Content objects to use as context
+        remaining_uses: Number of messages the context should persist for
+        listen_channel_id: Optional channel ID where bot should auto-respond without @mention
     """
-    pending_context[user_id] = contents
+    pending_context[user_id] = {
+        "contents": contents,
+        "remaining_uses": remaining_uses,
+        "listen_channel_id": listen_channel_id,
+    }
 
 
-def get_and_clear_pending_context(user_id):
-    """Retrieve and clear pending context for a user.
+def get_pending_context(user_id):
+    """Retrieve pending context for a user without clearing it.
     
     Args:
         user_id: Discord user ID
@@ -170,7 +182,46 @@ def get_and_clear_pending_context(user_id):
     Returns:
         List of Content objects, or empty list if no pending context.
     """
-    return pending_context.pop(user_id, [])
+    ctx = pending_context.get(user_id)
+    if ctx:
+        return ctx["contents"]
+    return []
+
+
+def decrement_pending_context(user_id):
+    """Decrement the remaining uses for a user's pending context.
+    
+    Call this after using context in a message. Clears context when uses reach 0.
+    
+    Args:
+        user_id: Discord user ID
+    
+    Returns:
+        Remaining uses after decrement, or 0 if no context.
+    """
+    ctx = pending_context.get(user_id)
+    if ctx:
+        ctx["remaining_uses"] -= 1
+        if ctx["remaining_uses"] <= 0:
+            del pending_context[user_id]
+            return 0
+        return ctx["remaining_uses"]
+    return 0
+
+
+def get_and_clear_pending_context(user_id):
+    """Retrieve and clear pending context for a user (legacy, clears immediately).
+    
+    Args:
+        user_id: Discord user ID
+    
+    Returns:
+        List of Content objects, or empty list if no pending context.
+    """
+    ctx = pending_context.pop(user_id, None)
+    if ctx:
+        return ctx["contents"]
+    return []
 
 
 def has_pending_context(user_id):
@@ -183,6 +234,36 @@ def has_pending_context(user_id):
         True if user has pending context, False otherwise.
     """
     return user_id in pending_context
+
+
+def get_pending_context_channel(user_id):
+    """Get the channel ID where bot should auto-respond for this user.
+    
+    Args:
+        user_id: Discord user ID
+    
+    Returns:
+        Channel ID or None if no auto-respond channel set.
+    """
+    ctx = pending_context.get(user_id)
+    if ctx:
+        return ctx.get("listen_channel_id")
+    return None
+
+
+def get_pending_context_remaining(user_id):
+    """Get remaining uses for a user's pending context.
+    
+    Args:
+        user_id: Discord user ID
+    
+    Returns:
+        Remaining uses, or 0 if no context.
+    """
+    ctx = pending_context.get(user_id)
+    if ctx:
+        return ctx["remaining_uses"]
+    return 0
 
 
 # --- Settings Management ---
@@ -415,7 +496,7 @@ async def generate_response_with_text(contents, settings, user_display_name=None
         # Handle case where response.text is None
         if response.text is None:
             return "❌ I received an empty response. Please try again."
-        return response.text
+        return convert_latex_to_discord(response.text)
     except Exception as e:
         return "❌ Exception: " + str(e)
 
@@ -491,7 +572,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
                 Part(text=f"[Image: {attachment.filename}]\n{prompt}")
             ]
             
-            return (response.text, history_parts, uploaded_file)
+            return (convert_latex_to_discord(response.text), history_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -500,7 +581,98 @@ async def process_image_attachment(attachment, user_text, settings, history=None
         return ("❌ Exception: " + str(e), None, None)
 
 
+async def process_image_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None):
+    """Process multiple image attachments using the Files API.
+    
+    Args:
+        attachments: List of Discord attachment objects
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
+    
+    Returns:
+        Tuple of (response_text, history_parts, uploaded_files) for history tracking.
+    """
+    # Handle single attachment case
+    if len(attachments) == 1:
+        response, parts, file = await process_image_attachment(
+            attachments[0], user_text, settings, history, user_display_name, user_username
+        )
+        return (response, parts, [file] if file else None)
+    
+    try:
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
+        thinking_level = settings.get("thinking_level", "minimal")
+        
+        uploaded_files = []
+        temp_paths = []
+        filenames = []
+        
+        # Download and upload all images
+        async with aiohttp.ClientSession() as session:
+            for attachment in attachments:
+                async with session.get(attachment.url) as resp:
+                    if resp.status != 200:
+                        continue
+                    image_data = await resp.read()
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1]) as tmp_file:
+                    tmp_file.write(image_data)
+                    temp_paths.append(tmp_file.name)
+                
+                uploaded_file = await execute_with_retry(
+                    lambda path=temp_paths[-1]: api_key_manager.client.files.upload(file=path)
+                )
+                uploaded_files.append(uploaded_file)
+                filenames.append(attachment.filename)
+        
+        if not uploaded_files:
+            return ("❌ Unable to download any of the images.", None, None)
+        
+        try:
+            prompt = user_text if user_text else default_image_prompt
+            
+            # Build user content parts with all images
+            user_parts = []
+            for uploaded_file in uploaded_files:
+                user_parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
+            user_parts.append(Part(text=prompt))
+            
+            if history:
+                contents = history + [Content(role="user", parts=user_parts)]
+            else:
+                contents = user_parts
+            
+            config = create_generate_config(
+                system_instruction=effective_system_instruction,
+                thinking_level=thinking_level,
+            )
+            
+            response = await execute_with_retry(
+                lambda: api_key_manager.client.models.generate_content(
+                    model=gemini_model,
+                    contents=contents,
+                    config=config
+                )
+            )
+            
+            history_parts = [Part(text=f"[Images: {', '.join(filenames)}]\n{prompt}")]
+            return (convert_latex_to_discord(response.text), history_parts, uploaded_files)
+        finally:
+            for tmp_path in temp_paths:
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+                
+    except Exception as e:
+        return ("❌ Exception: " + str(e), None, None)
+
+
 async def process_video_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
+
     """Process a video attachment using the Files API with proper state waiting.
     
     Args:
@@ -576,7 +748,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
                 Part(text=f"[Video: {attachment.filename}]\n{prompt}")
             ]
             
-            return (response.text, history_parts, active_file)
+            return (convert_latex_to_discord(response.text), history_parts, active_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -585,7 +757,104 @@ async def process_video_attachment(attachment, user_text, settings, history=None
         return ("❌ Exception: " + str(e), None, None)
 
 
+async def process_video_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None):
+    """Process multiple video attachments using the Files API.
+    
+    Args:
+        attachments: List of Discord attachment objects
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
+    
+    Returns:
+        Tuple of (response_text, history_parts, uploaded_files) for history tracking.
+    """
+    # Handle single attachment case
+    if len(attachments) == 1:
+        response, parts, file = await process_video_attachment(
+            attachments[0], user_text, settings, history, user_display_name, user_username
+        )
+        return (response, parts, [file] if file else None)
+    
+    try:
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
+        thinking_level = settings.get("thinking_level", "minimal")
+        
+        uploaded_files = []
+        temp_paths = []
+        filenames = []
+        
+        # Download and upload all videos
+        async with aiohttp.ClientSession() as session:
+            for attachment in attachments:
+                async with session.get(attachment.url) as resp:
+                    if resp.status != 200:
+                        continue
+                    video_data = await resp.read()
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1]) as tmp_file:
+                    tmp_file.write(video_data)
+                    temp_paths.append(tmp_file.name)
+                
+                uploaded_file = await execute_with_retry(
+                    lambda path=temp_paths[-1]: api_key_manager.client.files.upload(file=path)
+                )
+                
+                # Wait for video to become active
+                print(f"Waiting for video file to become active: {uploaded_file.name}")
+                active_file = await wait_for_file_active(uploaded_file)
+                print(f"Video file is now active: {active_file.name}")
+                
+                uploaded_files.append(active_file)
+                filenames.append(attachment.filename)
+        
+        if not uploaded_files:
+            return ("❌ Unable to download any of the videos.", None, None)
+        
+        try:
+            prompt = user_text if user_text else "What are these videos about? Summarize them for me."
+            
+            # Build user content parts with all videos
+            user_parts = []
+            for uploaded_file in uploaded_files:
+                user_parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
+            user_parts.append(Part(text=prompt))
+            
+            if history:
+                contents = history + [Content(role="user", parts=user_parts)]
+            else:
+                contents = user_parts
+            
+            config = create_generate_config(
+                system_instruction=effective_system_instruction,
+                thinking_level=thinking_level,
+            )
+            
+            response = await execute_with_retry(
+                lambda: api_key_manager.client.models.generate_content(
+                    model=gemini_model,
+                    contents=contents,
+                    config=config
+                )
+            )
+            
+            history_parts = [Part(text=f"[Videos: {', '.join(filenames)}]\n{prompt}")]
+            return (convert_latex_to_discord(response.text), history_parts, uploaded_files)
+        finally:
+            for tmp_path in temp_paths:
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+                
+    except Exception as e:
+        return ("❌ Exception: " + str(e), None, None)
+
+
 async def process_file_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
+
     """Process PDF or text file attachments using the Files API.
     
     Args:
@@ -656,7 +925,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
                 Part(text=f"[File: {attachment.filename}]\n{prompt}")
             ]
             
-            return (response.text, history_parts, uploaded_file)
+            return (convert_latex_to_discord(response.text), history_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -665,7 +934,98 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
         return ("❌ Exception: " + str(e), None, None)
 
 
+async def process_file_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None):
+    """Process multiple file attachments using the Files API.
+    
+    Args:
+        attachments: List of Discord attachment objects
+        user_text: User's message text
+        settings: User/thread settings dict
+        history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
+    
+    Returns:
+        Tuple of (response_text, history_parts, uploaded_files) for history tracking.
+    """
+    # Handle single attachment case
+    if len(attachments) == 1:
+        response, parts, file = await process_file_attachment(
+            attachments[0], user_text, settings, history, user_display_name, user_username
+        )
+        return (response, parts, [file] if file else None)
+    
+    try:
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
+        thinking_level = settings.get("thinking_level", "minimal")
+        
+        uploaded_files = []
+        temp_paths = []
+        filenames = []
+        
+        # Download and upload all files
+        async with aiohttp.ClientSession() as session:
+            for attachment in attachments:
+                async with session.get(attachment.url) as resp:
+                    if resp.status != 200:
+                        continue
+                    file_data = await resp.read()
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1]) as tmp_file:
+                    tmp_file.write(file_data)
+                    temp_paths.append(tmp_file.name)
+                
+                uploaded_file = await execute_with_retry(
+                    lambda path=temp_paths[-1]: api_key_manager.client.files.upload(file=path)
+                )
+                uploaded_files.append(uploaded_file)
+                filenames.append(attachment.filename)
+        
+        if not uploaded_files:
+            return ("❌ Unable to download any of the files.", None, None)
+        
+        try:
+            prompt = user_text if user_text else default_pdf_and_txt_prompt
+            
+            # Build user content parts with all files
+            user_parts = []
+            for uploaded_file in uploaded_files:
+                user_parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
+            user_parts.append(Part(text=prompt))
+            
+            if history:
+                contents = history + [Content(role="user", parts=user_parts)]
+            else:
+                contents = user_parts
+            
+            config = create_generate_config(
+                system_instruction=effective_system_instruction,
+                thinking_level=thinking_level,
+            )
+            
+            response = await execute_with_retry(
+                lambda: api_key_manager.client.models.generate_content(
+                    model=gemini_model,
+                    contents=contents,
+                    config=config
+                )
+            )
+            
+            history_parts = [Part(text=f"[Files: {', '.join(filenames)}]\n{prompt}")]
+            return (convert_latex_to_discord(response.text), history_parts, uploaded_files)
+        finally:
+            for tmp_path in temp_paths:
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+                
+    except Exception as e:
+        return ("❌ Exception: " + str(e), None, None)
+
+
 async def process_youtube_url(url, user_text, settings, history=None, user_display_name=None, user_username=None):
+
     """Process YouTube video URL using FileData.
     
     Args:
@@ -710,7 +1070,7 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
                 config=config
             )
         )
-        return (response.text, user_parts)
+        return (convert_latex_to_discord(response.text), user_parts)
     except Exception as e:
         return ("❌ Exception: " + str(e), None)
 
@@ -762,7 +1122,7 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
                 config=config
             )
         )
-        return (response.text, user_parts)
+        return (convert_latex_to_discord(response.text), user_parts)
     except Exception as e:
         return ("❌ Exception: " + str(e), None)
 
@@ -824,7 +1184,7 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
         
         for part in response.parts:
             if part.text is not None:
-                text_response = part.text
+                text_response = convert_latex_to_discord(part.text)
             elif part.inline_data is not None:
                 image_bytes = part.inline_data.data
                 image_mime_type = part.inline_data.mime_type

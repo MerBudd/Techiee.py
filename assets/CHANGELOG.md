@@ -1,4 +1,19 @@
 # Changelog
+#
+# ## [2.6.0-exp] - 2026-02-07 (Experimental)
+# 
+# ### Added
+# - **Multi-Attachment Support**: Techiee can now process all attachments in a message simultaneously (up to Discord's limit), including mixed types like multiple images, videos, and documents.
+# - **Reaction-Based Actions**: Interactive reactions on bot responses:
+#   - 🗑️: Delete the bot's response (Author only).
+#   - 🔄: Regenerate the response (Author only).
+# - **Reply Chain Context**: Automatically fetches up to 10 previous messages in a reply chain to maintain context when you reply to an older message.
+# - **Interactive `/settings` Menu**: A comprehensive, GUI-based settings menu using Discord's dropdowns and buttons for managing thinking levels and personas.
+# - **`/conversation-summary` Command**: Generatesa concise summary of your current conversation history.
+# 
+# ### Changed
++ - **Processor Architecture**: Updated all processor cogs to handle lists of attachments and reply chain context fragments.
++ - **Response Tracking**: Implemented an LRU-cached Response Tracker for reaction processing.
 
 ## [2.5.0] - 2026-02-07
 
@@ -6,9 +21,11 @@
 - **Dynamic Date/Time Awareness**: Techiee now knows the current date and time in every conversation.
 - **User Identification**: System prompt now includes the user's display name and @username.
 - **System Prompt Paid Feature Notes**: System prompt now informs Techiee that image generation and Google Search grounding require a paid API key.
-- **`/context` Command**: New slash command to load recent channel messages as context for your next message.
-  - Fetches messages from other users (excludes your own messages and Techiee's replies to you).
-  - Context is used for your next message only, then automatically cleared.
+- **`/context` Command**: New slash command to load recent channel messages as context.
+  - `count` parameter: Number of messages to load (1-50, default: 10).
+  - `lasts_for` parameter: Context persists for multiple messages (1-20, default: 5).
+  - **Channel-aware filtering**: Includes your own messages in non-tracked channels, excludes them in tracked channels/threads.
+  - **Auto-response**: In non-tracked channels, Techiee responds to your next messages without needing @mention.
   - Works with all content types: text, images, videos, files, YouTube URLs, and website URLs.
 
 ### Changed
@@ -16,6 +33,9 @@
 - **System Prompt update**: Updated system prompt slightly to clarify humor and sass.
 - **Configs Reorganization**: Reorganized `config.py` for better organization.
 - **Google Search Grounding**: Changed Google search grounding tool on/off switching from being manual code un-commenting to a toggle in `config.py`
+
+### Fixed
+- **Discord-friendly Math Rendering**: Automatically converts LaTeX math notation (e.g., `$\frac{a}{b}$`, `$\alpha$`, `$x^2$`) into readable Unicode text wrapped in code blocks for better Discord display.
 
 ## [2.4.0] - 2026-01-28
 

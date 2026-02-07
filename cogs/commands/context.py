@@ -7,7 +7,8 @@ from discord.ext import commands
 
 from google.genai.types import Part, Content
 
-from utils.gemini import set_pending_context
+from config import tracked_channels
+from utils.gemini import set_pending_context, tracked_threads
 
 
 class Context(commands.Cog):
@@ -16,10 +17,13 @@ class Context(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.command(name='context', description='Load recent channel messages as context for your next message.')
-    @app_commands.describe(count='Number of messages to load (1-50, default 10)')
-    async def context(self, interaction: discord.Interaction, count: int = 10):
-        """Load recent channel messages as temporary context for the next prompt."""
+    @app_commands.command(name='context', description='Load recent channel messages as context for your next messages.')
+    @app_commands.describe(
+        count='Number of messages to load (1-50, default 10)',
+        lasts_for='Number of your messages this context lasts for (1-20, default 5)'
+    )
+    async def context(self, interaction: discord.Interaction, count: int = 10, lasts_for: int = 5):
+        """Load recent channel messages as temporary context for the next prompts."""
         
         # Validate count
         if count < 1:
@@ -27,11 +31,22 @@ class Context(commands.Cog):
         elif count > 50:
             count = 50
         
+        # Validate lasts_for
+        if lasts_for < 1:
+            lasts_for = 1
+        elif lasts_for > 20:
+            lasts_for = 20
+        
         # Defer with ephemeral response
         await interaction.response.defer(ephemeral=True)
         
         user_id = interaction.user.id
         bot_id = self.bot.user.id
+        channel_id = interaction.channel.id
+        
+        # Determine if this is a tracked context (tracked channel or thread)
+        is_tracked = channel_id in tracked_channels or channel_id in tracked_threads
+        is_dm = isinstance(interaction.channel, discord.DMChannel)
         
         try:
             # Fetch messages from channel history
@@ -41,9 +56,10 @@ class Context(commands.Cog):
                 # Skip the command invocation itself (if present)
                 if msg.interaction and msg.interaction.id == interaction.id:
                     continue
-                    
-                # Skip user's own messages
-                if msg.author.id == user_id:
+                
+                # In tracked channels/threads: skip user's own messages
+                # In non-tracked channels: include user's own messages
+                if is_tracked and msg.author.id == user_id:
                     continue
                 
                 # Skip bot's messages that are replies to the user
@@ -63,8 +79,9 @@ class Context(commands.Cog):
                     break
             
             if not messages:
+                filter_note = " (your messages and my replies to you are excluded)" if is_tracked else " (my replies to you are excluded)"
                 await interaction.followup.send(
-                    "❌ No messages found to load as context (your messages and my replies to you are excluded).",
+                    f"❌ No messages found to load as context{filter_note}.",
                     ephemeral=True
                 )
                 return
@@ -75,8 +92,9 @@ class Context(commands.Cog):
             # Convert to Content objects
             context_contents = []
             for msg in messages:
-                # Format: "Username: message content"
-                text = f"{msg.author.display_name}: {msg.content}"
+                # Format: "[YYYY-MM-DD HH:MM] DisplayName (@username): message content"
+                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
+                text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
                 
                 # Handle attachments
                 if msg.attachments:
@@ -92,11 +110,22 @@ class Context(commands.Cog):
                 context_contents.append(Content(role="user", parts=[Part(text=text)]))
             
             # Store in pending context
-            set_pending_context(user_id, context_contents)
+            # For non-tracked channels (not DM, not tracked), set listen_channel_id for auto-response
+            listen_channel = None if (is_tracked or is_dm) else channel_id
+            set_pending_context(user_id, context_contents, remaining_uses=lasts_for, listen_channel_id=listen_channel)
+            
+            # Build response message
+            auto_respond_note = ""
+            if listen_channel:
+                auto_respond_note = "\n🎯 **I'll respond to your next messages here without needing @mention!**"
+            
+            include_note = ""
+            if not is_tracked:
+                include_note = " (including your own)"
             
             await interaction.followup.send(
-                f"✅ **Context loaded!** {len(messages)} message(s) from this channel are now cached.\n\n"
-                f"📝 **Send your prompt now** - the context will be used for your next message only.",
+                f"✅ **Context loaded!** {len(messages)} message(s){include_note} from this channel are now cached.\n\n"
+                f"📝 **Send your prompts** - the context will be used for your next **{lasts_for}** message(s).{auto_respond_note}",
                 ephemeral=True
             )
             

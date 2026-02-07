@@ -188,6 +188,9 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
         True if response was sent successfully (either initially or after retry flow started),
         False if there was an issue.
     """
+    # Import here to avoid circular imports
+    from cogs.reactions import response_tracker, add_reaction_buttons
+    
     if is_503_error(response_text):
         # Create retry view
         view = RetryView(
@@ -216,5 +219,85 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
         if update_history_callback:
             await update_history_callback(response_text)
         
-        await split_and_send_messages(message, response_text, 1900, message.author.id)
+        # Send the response and get the sent message(s)
+        sent_messages = await split_and_send_messages_with_tracking(
+            message, response_text, 1900, message.author.id
+        )
+        
+        # Track each sent message for reaction-based actions
+        for sent_msg in sent_messages:
+            response_tracker.track(
+                bot_message_id=sent_msg.id,
+                author_id=message.author.id,
+                original_message=message,
+                regenerate_callback=retry_callback
+            )
+            # Add reaction buttons
+            await add_reaction_buttons(sent_msg)
+        
         return True
+
+
+async def split_and_send_messages_with_tracking(message, text, max_length, user_id=None):
+    """Split long messages and send them, returning the sent message objects.
+    
+    This is a variant of split_and_send_messages that returns the sent messages
+    for tracking purposes (reaction-based actions).
+    """
+    sent_messages = []
+    
+    if not text:
+        return sent_messages
+    
+    # If text fits in one message, just send it
+    if len(text) <= max_length:
+        sent_msg = await message.reply(text, mention_author=True)
+        sent_messages.append(sent_msg)
+        return sent_messages
+    
+    # Reserve space for indicator " ... [XX/XX]" (max 13 chars) + mention " <@USER_ID>" (max ~25 chars)
+    mention_reserve = 25 if user_id else 0
+    indicator_reserve = 15 + mention_reserve
+    effective_max = max_length - indicator_reserve
+    
+    # Split the text into chunks (simplified for tracking purposes)
+    chunks = []
+    remaining = text
+    
+    while remaining:
+        if len(remaining) <= effective_max:
+            chunks.append(remaining)
+            break
+        
+        # Find a safe cut point (space or newline)
+        cut_pos = effective_max
+        space_pos = remaining.rfind(' ', 0, effective_max)
+        if space_pos > effective_max * 0.3:
+            cut_pos = space_pos + 1
+        
+        chunk = remaining[:cut_pos].rstrip()
+        chunks.append(chunk)
+        remaining = remaining[cut_pos:].lstrip()
+    
+    # Add indicators to each chunk
+    user_mention = f" <@{user_id}>" if user_id else ""
+    total = len(chunks)
+    for i in range(len(chunks)):
+        if i == 0:
+            if total > 1:
+                chunks[i] = f"{chunks[i]}... [{i+1}/{total}]"
+        elif i < total - 1:
+            chunks[i] = f"{chunks[i]}... [{i+1}/{total}]{user_mention}"
+        else:
+            chunks[i] = f"{chunks[i]} [{i+1}/{total}]{user_mention}"
+    
+    # Send the messages and collect them
+    for idx, chunk in enumerate(chunks):
+        if idx == 0:
+            sent_msg = await message.reply(chunk, mention_author=True)
+        else:
+            sent_msg = await message.channel.send(chunk)
+        sent_messages.append(sent_msg)
+    
+    return sent_messages
+

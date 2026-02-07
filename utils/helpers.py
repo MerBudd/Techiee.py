@@ -199,3 +199,139 @@ def is_youtube_url(url):
         r'(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
     )
     return re.match(youtube_regex, url) is not None
+
+
+def convert_latex_to_discord(text):
+    """Convert LaTeX math notation to Discord-friendly Unicode text.
+    
+    Discord doesn't support LaTeX rendering, so this converts common
+    LaTeX math notation to Unicode equivalents that display properly.
+    
+    Args:
+        text: Text that may contain LaTeX math notation
+    
+    Returns:
+        Text with LaTeX converted to Unicode
+    """
+    if not text:
+        return text
+    
+    # Greek letters (lowercase)
+    greek_lower = {
+        r'\alpha': 'α', r'\beta': 'β', r'\gamma': 'γ', r'\delta': 'δ',
+        r'\epsilon': 'ε', r'\zeta': 'ζ', r'\eta': 'η', r'\theta': 'θ',
+        r'\iota': 'ι', r'\kappa': 'κ', r'\lambda': 'λ', r'\mu': 'μ',
+        r'\nu': 'ν', r'\xi': 'ξ', r'\pi': 'π', r'\rho': 'ρ',
+        r'\sigma': 'σ', r'\tau': 'τ', r'\upsilon': 'υ', r'\phi': 'φ',
+        r'\chi': 'χ', r'\psi': 'ψ', r'\omega': 'ω',
+    }
+    
+    # Greek letters (uppercase)
+    greek_upper = {
+        r'\Alpha': 'Α', r'\Beta': 'Β', r'\Gamma': 'Γ', r'\Delta': 'Δ',
+        r'\Epsilon': 'Ε', r'\Zeta': 'Ζ', r'\Eta': 'Η', r'\Theta': 'Θ',
+        r'\Iota': 'Ι', r'\Kappa': 'Κ', r'\Lambda': 'Λ', r'\Mu': 'Μ',
+        r'\Nu': 'Ν', r'\Xi': 'Ξ', r'\Pi': 'Π', r'\Rho': 'Ρ',
+        r'\Sigma': 'Σ', r'\Tau': 'Τ', r'\Upsilon': 'Υ', r'\Phi': 'Φ',
+        r'\Chi': 'Χ', r'\Psi': 'Ψ', r'\Omega': 'Ω',
+    }
+    
+    # Common math symbols
+    math_symbols = {
+        r'\times': '×', r'\div': '÷', r'\pm': '±', r'\mp': '∓',
+        r'\cdot': '·', r'\ast': '∗', r'\star': '★',
+        r'\leq': '≤', r'\geq': '≥', r'\neq': '≠', r'\approx': '≈',
+        r'\equiv': '≡', r'\sim': '∼', r'\propto': '∝',
+        r'\infty': '∞', r'\partial': '∂', r'\nabla': '∇',
+        r'\sum': '∑', r'\prod': '∏', r'\int': '∫',
+        r'\forall': '∀', r'\exists': '∃', r'\in': '∈', r'\notin': '∉',
+        r'\subset': '⊂', r'\supset': '⊃', r'\subseteq': '⊆', r'\supseteq': '⊇',
+        r'\cup': '∪', r'\cap': '∩', r'\emptyset': '∅',
+        r'\rightarrow': '→', r'\leftarrow': '←', r'\leftrightarrow': '↔',
+        r'\Rightarrow': '⇒', r'\Leftarrow': '⇐', r'\Leftrightarrow': '⇔',
+        r'\to': '→', r'\gets': '←',
+        r'\angle': '∠', r'\degree': '°', r'\circ': '°',
+        r'\perp': '⊥', r'\parallel': '∥',
+        r'\ldots': '…', r'\cdots': '⋯', r'\vdots': '⋮',
+        r'\therefore': '∴', r'\because': '∵',
+        r'\left|': '|', r'\right|': '|',
+        r'\left(': '(', r'\right)': ')',
+        r'\left[': '[', r'\right]': ']',
+        r'\left\{': '{', r'\right\}': '}',
+        r'\{': '{', r'\}': '}',
+    }
+    
+    # Superscript digits mapping
+    superscript_map = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
+        'n': 'ⁿ', 'i': 'ⁱ',
+    }
+    
+    # Subscript digits mapping
+    subscript_map = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+        '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+        'a': 'ₐ', 'e': 'ₑ', 'o': 'ₒ', 'x': 'ₓ',
+        'i': 'ᵢ', 'j': 'ⱼ', 'n': 'ₙ', 'r': 'ᵣ', 'u': 'ᵤ', 'v': 'ᵥ',
+    }
+    
+    result = text
+    
+    # Replace Greek letters
+    for latex, unicode_char in {**greek_lower, **greek_upper}.items():
+        result = result.replace(latex, unicode_char)
+    
+    # Replace math symbols
+    for latex, unicode_char in math_symbols.items():
+        result = result.replace(latex, unicode_char)
+    
+    # Handle fractions: \frac{a}{b} -> a/b
+    frac_pattern = r'\\frac\{([^{}]+)\}\{([^{}]+)\}'
+    result = re.sub(frac_pattern, r'(\1)/(\2)', result)
+    
+    # Handle square roots: \sqrt{x} -> √(x)
+    sqrt_pattern = r'\\sqrt\{([^{}]+)\}'
+    result = re.sub(sqrt_pattern, r'√(\1)', result)
+    
+    # Handle nth roots: \sqrt[n]{x} -> ⁿ√(x)
+    nthroot_pattern = r'\\sqrt\[([^\]]+)\]\{([^{}]+)\}'
+    def nthroot_replace(m):
+        n, x = m.group(1), m.group(2)
+        n_super = ''.join(superscript_map.get(c, c) for c in n)
+        return f'{n_super}√({x})'
+    result = re.sub(nthroot_pattern, nthroot_replace, result)
+    
+    # Handle superscripts: ^{xyz} or ^x -> superscript
+    def superscript_replace(m):
+        content = m.group(1) or m.group(2)
+        return ''.join(superscript_map.get(c, c) for c in content)
+    # Match ^{...} or ^single_char
+    result = re.sub(r'\^\{([^{}]+)\}|\^([0-9n+-])', superscript_replace, result)
+    
+    # Handle subscripts: _{xyz} or _x -> subscript
+    def subscript_replace(m):
+        content = m.group(1) or m.group(2)
+        return ''.join(subscript_map.get(c, c) for c in content)
+    # Match _{...} or _single_char
+    result = re.sub(r'_\{([^{}]+)\}|_([0-9a-z])', subscript_replace, result)
+    
+    # Handle text in math mode: \text{...} -> just the text
+    result = re.sub(r'\\text\{([^{}]+)\}', r'\1', result)
+    result = re.sub(r'\\mathrm\{([^{}]+)\}', r'\1', result)
+    result = re.sub(r'\\mathbf\{([^{}]+)\}', r'\1', result)
+    
+    # Wrap math in code blocks for Discord visibility
+    # Inline math $...$ -> `...` (single backticks)
+    result = re.sub(r'\$([^\$]+)\$', r'`\1`', result)
+    # Display math $$...$$ -> ```...``` (code block)
+    result = re.sub(r'\$\$([^\$]+)\$\$', r'```\n\1\n```', result)
+    
+    # Clean up any remaining backslashes before common commands that weren't caught
+    result = result.replace(r'\quad', '  ')
+    result = result.replace(r'\qquad', '    ')
+    result = result.replace(r'\ ', ' ')
+    
+    return result

@@ -18,11 +18,13 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 
 ## Key Features
 
-- **🖼️ Multimodal Support**: Send images, videos, documents, PDFs, or text files and Techiee will analyze them.
+- **🖼️ Multimodal Support**: Send images, videos, documents, PDFs, or text files, and Techiee will analyze them together.
 - **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
-- **🧠 Advanced Reasoning**: Use the `/thinking` command to adjust the AI's reasoning depth (Minimal to High).
-- **🎭 Persistent Personas**: Set a custom personality with `/persona` that stays active even after history resets.
-- **💬 Memory**: Maintains per-user and per-thread message history and personas for natural conversations.
+- **🧠 Advanced Reasoning**: Use the `/thinking` command or the new `/settings` UI to adjust the AI's reasoning depth.
+- **🎭 Persistent Personas**: Set a custom personality with `/persona` or via `/settings` that stays active even after history resets.
+- **🗑️ Interactive Actions**: React with 🗑️ to delete a response or 🔄 to regenerate it (Author only).
+- **📝 Conversation Summary**: Generate a concise AI summary of your chat history with `/conversation-summary`.
+- **💬 Memory**: Maintains per-user and per-thread message history, including **reply chain context** for natural conversations.
 - **🧵 Threads**: Create dedicated chat spaces with `/createthread`.
 - **🎨 Image Generation**: Generate or edit images with `/image`, using Nano Banana (requires paid API key).
 - **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
@@ -40,6 +42,9 @@ You can tweak all bot settings, including safety filters, model parameters, and 
 - `/createthread <name>`: Starts a new thread where Techiee will respond to every message.
 - `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
 - `/persona <description>`: Sets a custom personality. Use `/persona default` to reset.
+- `/context <count> [lasts_for]`: Loads channel messages as context for your next prompts. In non-tracked channels, Techiee will auto-respond without needing @mention.
+- `/settings`: Interactive menu to view and adjust AI settings (thinking level, persona).
+- `/conversation-summary`: Generates an AI summary of your conversation history.
 - `/forget`: Clears your message history with Techiee.
 - `/image`: Generates or edits an image using Nano Banana (requires paid API key).
 - `/sync`: Syncs slash commands globally (Owner only).
