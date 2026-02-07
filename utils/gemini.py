@@ -15,7 +15,7 @@ from config import (
     gemini_api_keys,
     gemini_model,
     image_model,
-    system_instruction,
+    get_system_instruction,
     default_image_prompt,
     default_pdf_and_txt_prompt,
     default_url_prompt,
@@ -204,11 +204,18 @@ def set_settings(context_id, is_thread, settings):
         # New code should use set_settings_for_context directly
 
 
-def get_effective_system_instruction(settings):
-    """Get the system instruction with persona applied if set."""
+def get_effective_system_instruction(settings, user_display_name=None, user_username=None):
+    """Get the system instruction with persona applied if set.
+    
+    Args:
+        settings: User/thread settings dict
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
+    """
+    base_instruction = get_system_instruction(user_display_name, user_username)
     if settings.get("persona"):
-        return f"{settings['persona']}\n\n{system_instruction}"
-    return system_instruction
+        return f"{settings['persona']}\n\n{base_instruction}"
+    return base_instruction
 
 
 # --- File Processing Utilities ---
@@ -335,18 +342,20 @@ def create_model_content(text):
 
 # --- Response Generation Functions ---
 
-async def generate_response_with_text(contents, settings):
+async def generate_response_with_text(contents, settings, user_display_name=None, user_username=None):
     """Generate a response for text input with optional history.
     
     Args:
         contents: Either a string (single message) or list of Content objects (with history)
         settings: User/thread settings dict
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
     
     Returns:
         Response text string
     """
     try:
-        effective_system_instruction = get_effective_system_instruction(settings)
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
         config = create_generate_config(
@@ -371,7 +380,7 @@ async def generate_response_with_text(contents, settings):
         return "❌ Exception: " + str(e)
 
 
-async def process_image_attachment(attachment, user_text, settings, history=None):
+async def process_image_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
     """Process an image attachment using the Files API with optional history.
     
     Args:
@@ -379,6 +388,8 @@ async def process_image_attachment(attachment, user_text, settings, history=None
         user_text: User's message text
         settings: User/thread settings dict
         history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_file) for history tracking.
@@ -386,7 +397,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
         403 errors when files expire on Gemini's side.
     """
     try:
-        effective_system_instruction = get_effective_system_instruction(settings)
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
         # Download the image
@@ -449,7 +460,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_video_attachment(attachment, user_text, settings, history=None):
+async def process_video_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
     """Process a video attachment using the Files API with proper state waiting.
     
     Args:
@@ -457,6 +468,8 @@ async def process_video_attachment(attachment, user_text, settings, history=None
         user_text: User's message text
         settings: User/thread settings dict
         history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_file) for history tracking.
@@ -464,7 +477,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
         403 errors when files expire on Gemini's side.
     """
     try:
-        effective_system_instruction = get_effective_system_instruction(settings)
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
         # Download the video
@@ -532,7 +545,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_file_attachment(attachment, user_text, settings, history=None):
+async def process_file_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
     """Process PDF or text file attachments using the Files API.
     
     Args:
@@ -540,6 +553,8 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
         user_text: User's message text
         settings: User/thread settings dict
         history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_file) for history tracking.
@@ -547,7 +562,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
         403 errors when files expire on Gemini's side.
     """
     try:
-        effective_system_instruction = get_effective_system_instruction(settings)
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
         # Download the file
@@ -610,7 +625,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None)
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_youtube_url(url, user_text, settings, history=None):
+async def process_youtube_url(url, user_text, settings, history=None, user_display_name=None, user_username=None):
     """Process YouTube video URL using FileData.
     
     Args:
@@ -618,12 +633,14 @@ async def process_youtube_url(url, user_text, settings, history=None):
         user_text: User's message text
         settings: User/thread settings dict
         history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
     
     Returns:
         Tuple of (response_text, user_content_parts) for history tracking
     """
     try:
-        effective_system_instruction = get_effective_system_instruction(settings)
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
         prompt = user_text.replace(url, "").strip() if user_text else default_url_prompt
@@ -658,7 +675,7 @@ async def process_youtube_url(url, user_text, settings, history=None):
         return ("❌ Exception: " + str(e), None)
 
 
-async def process_website_url(url, user_text, settings, history=None):
+async def process_website_url(url, user_text, settings, history=None, user_display_name=None, user_username=None):
     """Process website URL using URL context tool.
     
     Args:
@@ -666,12 +683,14 @@ async def process_website_url(url, user_text, settings, history=None):
         user_text: User's message text
         settings: User/thread settings dict
         history: Optional list of Content objects (message history)
+        user_display_name: Display name of the user (optional)
+        user_username: Username of the user without @ (optional)
     
     Returns:
         Tuple of (response_text, user_content_parts) for history tracking
     """
     try:
-        effective_system_instruction = get_effective_system_instruction(settings)
+        effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
         prompt = user_text if user_text else f"{default_url_prompt} {url}"

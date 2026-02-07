@@ -26,18 +26,22 @@ class FileProcessor(commands.Cog):
         print(f"New {file_type} File Message FROM: {message.author.name} : {cleaned_text}")
         print(f"Processing {file_type} File")
         
+        # Get user info for system prompt
+        user_display_name = message.author.display_name
+        user_username = message.author.name
+        
         # Get history if enabled (context-aware)
         history = get_message_history_contents(message) if max_history > 0 else None
         
         # Process file with history context
         response_text, history_parts, uploaded_file = await process_file_attachment(
-            attachment, cleaned_text, settings, history
+            attachment, cleaned_text, settings, history, user_display_name, user_username
         )
         
         # Define retry callback
         async def retry_callback():
             result, _, _ = await process_file_attachment(
-                attachment, cleaned_text, settings, history
+                attachment, cleaned_text, settings, history, user_display_name, user_username
             )
             return result
         

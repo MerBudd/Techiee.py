@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.5.0] - 2026-02-07
+
+### Added
+- **Dynamic Date/Time Awareness**: Techiee now knows the current date and time in every conversation.
+- **User Identification**: System prompt now includes the user's display name and @username.
+- **Paid API Feature Notes**: System prompt now informs the user that image generation and Google Search grounding require a paid API key.
+
+### Changed
+- **System Prompt Architecture**: Converted static `system_instruction` to a dynamic `get_system_instruction()` function that generates context-aware prompts.
+- **System Prompt update**: Updated system prompt slightly to clarify humor and sass.
+
 ## [2.4.0] - 2026-01-28
 
 ### Added

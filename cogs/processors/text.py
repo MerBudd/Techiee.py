@@ -26,13 +26,17 @@ class TextProcessor(commands.Cog):
         """Process a text-only message with history support."""
         print(f"New Text Message FROM: {message.author.name} : {cleaned_text}")
         
+        # Get user info for system prompt
+        user_display_name = message.author.display_name
+        user_username = message.author.name
+        
         # Regular text conversation with history
         if max_history == 0:
-            response_text = await generate_response_with_text(cleaned_text, settings)
+            response_text = await generate_response_with_text(cleaned_text, settings, user_display_name, user_username)
             
             # Define retry callback for no-history mode
             async def retry_callback():
-                return await generate_response_with_text(cleaned_text, settings)
+                return await generate_response_with_text(cleaned_text, settings, user_display_name, user_username)
             
             await send_response_with_retry(message, response_text, retry_callback)
             return
@@ -45,11 +49,11 @@ class TextProcessor(commands.Cog):
         contents = history + [user_content]
         
         # Generate response with full history context
-        response_text = await generate_response_with_text(contents, settings)
+        response_text = await generate_response_with_text(contents, settings, user_display_name, user_username)
         
         # Define retry callback that re-generates with same context
         async def retry_callback():
-            return await generate_response_with_text(contents, settings)
+            return await generate_response_with_text(contents, settings, user_display_name, user_username)
         
         # Define history update callback for when response succeeds
         async def update_history(response_text):

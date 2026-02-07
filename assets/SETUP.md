@@ -25,4 +25,4 @@ You can also adjust many other settings in [config.py](config.py), such as the m
    ```
 
 > [!NOTE]
-> Grounding with Google Search currently requires a paid API tier and is disabled by default in Techiee. Please un-comment line 355 in `utils/gemini.py` to enable it.
+> Grounding with Google Search currently requires a paid API tier and is disabled by default in Techiee. Please un-comment line 364 in `utils/gemini.py` to enable it.

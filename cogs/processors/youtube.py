@@ -25,15 +25,19 @@ class YouTubeProcessor(commands.Cog):
         print(f"New YouTube URL FROM: {message.author.name} : {url}")
         print("Processing YouTube Video")
         
+        # Get user info for system prompt
+        user_display_name = message.author.display_name
+        user_username = message.author.name
+        
         # Get history if enabled (context-aware)
         history = get_message_history_contents(message) if max_history > 0 else None
         
         # Process YouTube URL with history context
-        response_text, user_parts = await process_youtube_url(url, cleaned_text, settings, history)
+        response_text, user_parts = await process_youtube_url(url, cleaned_text, settings, history, user_display_name, user_username)
         
         # Define retry callback
         async def retry_callback():
-            result, _ = await process_youtube_url(url, cleaned_text, settings, history)
+            result, _ = await process_youtube_url(url, cleaned_text, settings, history, user_display_name, user_username)
             return result
         
         # Define history update callback
