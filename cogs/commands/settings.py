@@ -15,7 +15,11 @@ from utils.gemini import (
     get_history_key,
     message_history,
     generate_response_with_text,
+    pending_context,
+    set_pending_context,
+    get_pending_context,
 )
+
 
 
 def get_settings_key_from_interaction(interaction: discord.Interaction):
@@ -46,7 +50,7 @@ class ThinkingSelect(ui.Select):
         options = [
             discord.SelectOption(
                 label="Minimal", value="minimal",
-                description="Fastest, less reasoning",
+                description="Fastest, less reasoning (default)",
                 default=(current_level == "minimal"),
                 emoji="⚡"
             ),
@@ -64,7 +68,7 @@ class ThinkingSelect(ui.Select):
             ),
             discord.SelectOption(
                 label="High", value="high",
-                description="Deep reasoning (default)",
+                description="Deep reasoning",
                 default=(current_level == "high"),
                 emoji="🧠"
             ),
@@ -139,25 +143,89 @@ class ResetButton(ui.Button):
         set_settings_for_context(self.settings_key, default_settings.copy())
         await interaction.response.edit_message(
             content=f"✅ All settings reset to default for {self.scope_msg}.",
-            view=SettingsView(self.settings_key, self.scope_msg)
+            view=SettingsView(self.settings_key, self.scope_msg, interaction.user.id, interaction.channel)
         )
+
+
+class ContextButton(ui.Button):
+    """Button to load context from channel history."""
+    
+    def __init__(self, user_id, channel, has_context=False):
+        label = "📖 Refresh Context" if has_context else "📖 Load Context"
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, custom_id="context_button")
+        self.user_id = user_id
+        self.channel = channel
+    
+    async def callback(self, interaction: discord.Interaction):
+        # Load 10 messages of context that lasts for 5 messages (default values)
+        # This is a simplified version - loads context like /context command
+        bot = interaction.client
+        user_id = interaction.user.id
+        channel = self.channel
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Fetch messages from channel history
+            messages = []
+            async for msg in channel.history(limit=30):
+                # Skip bot's own messages
+                if msg.author.id == bot.user.id:
+                    continue
+                messages.append(msg)
+                if len(messages) >= 10:
+                    break
+            
+            if not messages:
+                await interaction.followup.send("❌ No messages found to load as context.", ephemeral=True)
+                return
+            
+            # Reverse to get chronological order
+            messages.reverse()
+            
+            # Convert to Content objects
+            from google.genai.types import Part, Content
+            context_contents = []
+            for msg in messages:
+                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
+                text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
+                if msg.attachments:
+                    attachment_names = [att.filename for att in msg.attachments]
+                    text += f" [Attachments: {', '.join(attachment_names)}]"
+                context_contents.append(Content(role="user", parts=[Part(text=text)]))
+            
+            # Store in pending context (lasts for 5 messages, no auto-respond)
+            set_pending_context(user_id, context_contents, remaining_uses=5, listen_channel_id=None)
+            
+            await interaction.followup.send(
+                f"✅ Loaded {len(messages)} messages as context. Will persist for your next 5 messages.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error loading context: {str(e)}", ephemeral=True)
 
 
 class SettingsView(ui.View):
     """View containing all settings controls."""
     
-    def __init__(self, settings_key, scope_msg, timeout=180):
+    def __init__(self, settings_key, scope_msg, user_id=None, channel=None, timeout=180):
         super().__init__(timeout=timeout)
         
         current_settings = context_settings.get(settings_key, default_settings.copy())
-        current_thinking = current_settings.get("thinking_level", "high")
+        current_thinking = current_settings.get("thinking_level", "minimal")
         
-        # Add the dropdown
+        # Add the thinking dropdown
         self.add_item(ThinkingSelect(current_thinking))
         
         # Add buttons
         self.add_item(PersonaButton(settings_key, scope_msg))
         self.add_item(ResetButton(settings_key, scope_msg))
+        
+        # Add context button if we have user_id and channel
+        if user_id and channel:
+            has_context = user_id in pending_context
+            self.add_item(ContextButton(user_id, channel, has_context))
+
 
 
 class Settings(commands.Cog):
@@ -171,11 +239,21 @@ class Settings(commands.Cog):
         """Open the interactive settings menu."""
         settings_key, scope_msg = get_settings_key_from_interaction(interaction)
         current_settings = context_settings.get(settings_key, default_settings.copy())
+        user_id = interaction.user.id
         
         # Build current settings summary
-        thinking = current_settings.get("thinking_level", "high")
+        thinking = current_settings.get("thinking_level", "minimal")
         persona = current_settings.get("persona")
         persona_display = f'"{persona[:50]}..."' if persona and len(persona) > 50 else (f'"{persona}"' if persona else "Default")
+        
+        # Get context status
+        ctx = pending_context.get(user_id)
+        if ctx:
+            ctx_count = len(ctx.get("contents", []))
+            ctx_remaining = ctx.get("remaining_uses", 0)
+            context_display = f"{ctx_count} msgs loaded, expires in {ctx_remaining} msg(s)"
+        else:
+            context_display = "None"
         
         embed = discord.Embed(
             title="⚙️ AI Settings",
@@ -184,18 +262,20 @@ class Settings(commands.Cog):
         )
         embed.add_field(name="🧠 Thinking Level", value=thinking.capitalize(), inline=True)
         embed.add_field(name="🎭 Persona", value=persona_display, inline=True)
-        embed.add_field(name="📊 Context Limit", value=f"{max_history} messages", inline=True)
+        embed.add_field(name="📖 Loaded Context", value=context_display, inline=True)
+        embed.add_field(name="📊 History Limit", value=f"{max_history} messages", inline=True)
         embed.set_footer(text="Use the controls below to adjust settings")
         
-        view = SettingsView(settings_key, scope_msg)
+        view = SettingsView(settings_key, scope_msg, user_id, interaction.channel)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
     
     @app_commands.command(name='thinking', description='Set the AI thinking level for reasoning depth.')
     @app_commands.choices(level=[
         app_commands.Choice(name='minimal - Fastest, less reasoning', value='minimal'),
         app_commands.Choice(name='low - Fast, simple reasoning', value='low'),
         app_commands.Choice(name='medium - Balanced thinking', value='medium'),
-        app_commands.Choice(name='high - Deep reasoning (default)', value='high'),
+        app_commands.Choice(name='high - Deep reasoning', value='high'),
     ])
     async def thinking(self, interaction: discord.Interaction, level: app_commands.Choice[str]):
         """Set the AI thinking/reasoning level."""
@@ -278,6 +358,14 @@ Conversation to summarize:
         settings = {"thinking_level": "minimal", "persona": None}
         summary = await generate_response_with_text(full_prompt, settings)
         
+        # Check for 503 error
+        from utils.retry import is_503_error
+        if is_503_error(summary):
+            await interaction.followup.send(
+                "❌ The server is overloaded. Please try `/conversation-summary` again in a few moments."
+            )
+            return
+        
         # Send the summary
         embed = discord.Embed(
             title="📋 Conversation Summary",
@@ -287,6 +375,7 @@ Conversation to summarize:
         embed.set_footer(text=f"Context: {scope_msg} • {len(history)} messages analyzed")
         
         await interaction.followup.send(embed=embed)
+
 
 
 async def setup(bot):

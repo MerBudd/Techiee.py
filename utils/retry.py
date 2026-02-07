@@ -152,16 +152,33 @@ class RetryView(ui.View):
             if self.update_history_callback:
                 await self.update_history_callback(response_text)
             
-            # Send the successful response
-            await split_and_send_messages(
+            # Send the successful response with tracking
+            sent_messages = await split_and_send_messages_with_tracking(
                 self.original_message, 
                 response_text, 
                 1900, 
                 self.original_message.author.id
             )
             
+            # Import here to avoid circular imports
+            from cogs.reactions import response_tracker, add_reaction_buttons
+            
+            # Track and add reactions only to the LAST message (but link all splits)
+            if sent_messages:
+                all_ids = [m.id for m in sent_messages]
+                last_msg = sent_messages[-1]
+                response_tracker.track(
+                    bot_message_id=last_msg.id,
+                    author_id=self.original_message.author.id,
+                    original_message=self.original_message,
+                    regenerate_callback=self.retry_callback,
+                    all_message_ids=all_ids
+                )
+                await add_reaction_buttons(last_msg)
+            
             # Stop the view
             self.stop()
+
     
     async def on_timeout(self):
         """Handle view timeout - disable the button."""
@@ -224,18 +241,21 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
             message, response_text, 1900, message.author.id
         )
         
-        # Track each sent message for reaction-based actions
-        for sent_msg in sent_messages:
+        # Track and add reactions only to the LAST message (but link all splits)
+        if sent_messages:
+            all_ids = [m.id for m in sent_messages]
+            last_msg = sent_messages[-1]
             response_tracker.track(
-                bot_message_id=sent_msg.id,
+                bot_message_id=last_msg.id,
                 author_id=message.author.id,
                 original_message=message,
-                regenerate_callback=retry_callback
+                regenerate_callback=retry_callback,
+                all_message_ids=all_ids
             )
-            # Add reaction buttons
-            await add_reaction_buttons(sent_msg)
+            await add_reaction_buttons(last_msg)
         
         return True
+
 
 
 async def split_and_send_messages_with_tracking(message, text, max_length, user_id=None):
