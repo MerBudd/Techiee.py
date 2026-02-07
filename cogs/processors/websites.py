@@ -10,6 +10,7 @@ from utils.gemini import (
     get_message_history_contents,
     create_user_content,
     create_model_content,
+    get_and_clear_pending_context,
 )
 from config import max_history
 
@@ -29,8 +30,16 @@ class WebsiteProcessor(commands.Cog):
         user_display_name = message.author.display_name
         user_username = message.author.name
         
-        # Get history if enabled (context-aware)
-        history = get_message_history_contents(message) if max_history > 0 else None
+        # Check for pending context from /context command
+        pending_ctx = get_and_clear_pending_context(message.author.id)
+        if pending_ctx:
+            print(f"📚 Using pending context ({len(pending_ctx)} messages) for {message.author.name}")
+        
+        # Get history if enabled (context-aware) and combine with pending context
+        if max_history > 0:
+            history = get_message_history_contents(message) + pending_ctx
+        else:
+            history = pending_ctx if pending_ctx else None
         
         # Process website URL with history context
         response_text, user_parts = await process_website_url(url, cleaned_text, settings, history, user_display_name, user_username)
@@ -54,4 +63,3 @@ class WebsiteProcessor(commands.Cog):
 async def setup(bot):
     """Setup function for loading the cog."""
     await bot.add_cog(WebsiteProcessor(bot))
-

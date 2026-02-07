@@ -21,6 +21,7 @@ from config import (
     default_url_prompt,
     default_aspect_ratio,
     url_context_tool,
+    google_search_tool,
     safety_settings,
     create_generate_config,
     tracked_channels,
@@ -143,6 +144,45 @@ default_settings = {
     "thinking_level": "minimal",  # minimal, low, medium, high
     "persona": None  # Custom persona, None means use default system instruction
 }
+
+# Pending context cache (for /context command)
+# Keys: user_id → list of Content objects
+# This is cleared after one use (when the user sends their next message)
+pending_context = {}
+
+
+def set_pending_context(user_id, contents):
+    """Store pending context for a user (used by /context command).
+    
+    Args:
+        user_id: Discord user ID
+        contents: List of Content objects to use as context
+    """
+    pending_context[user_id] = contents
+
+
+def get_and_clear_pending_context(user_id):
+    """Retrieve and clear pending context for a user.
+    
+    Args:
+        user_id: Discord user ID
+    
+    Returns:
+        List of Content objects, or empty list if no pending context.
+    """
+    return pending_context.pop(user_id, [])
+
+
+def has_pending_context(user_id):
+    """Check if a user has pending context.
+    
+    Args:
+        user_id: Discord user ID
+    
+    Returns:
+        True if user has pending context, False otherwise.
+    """
+    return user_id in pending_context
 
 
 # --- Settings Management ---
@@ -361,7 +401,7 @@ async def generate_response_with_text(contents, settings, user_display_name=None
         config = create_generate_config(
             system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
-            # tools=[google_search_tool], # Requires paid plan
+            tools=[google_search_tool] if google_search_tool else None,
         )
         
         # Use execute_with_retry for automatic key rotation on 429 errors

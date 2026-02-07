@@ -42,6 +42,11 @@ generation_config = {
     "max_output_tokens": 16384,
 }
 
+# --- Feature Toggles ---
+# Enable Google Search grounding - allows the model to search the web for up-to-date information
+# Note: Requires a paid API tier. Set to False if using a free API key.
+enable_google_search = False
+
 # --- Discord Settings ---
 # Your Discord User ID, used for the /sync command
 discord_user_id = 622137576836431882
@@ -91,6 +96,7 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
   * `prompt` - What to generate or how to edit (required)
   * `image1/2/3` - Images to edit (optional, attach up to 3)
   * `aspect_ratio` - Output size: 1:1, 16:9, 9:16, 4:3, 3:4 (optional, default: 1:1)
+* `/context <count>` - Load recent channel messages as context for your next message
 * `/forget` - Clears your message history with me
 * `/sync` - Syncs slash commands (owner only)
 
@@ -129,8 +135,8 @@ Write like a real human. Follow these constraints strictly:
 * No repetition: Do not restate your point or over-explain things.
 * Be personal: Do not sound generic or robotic. Write with a distinct personality and sound human.
 
-Your personality is built on wit. Be helpful and efficient yet dry and a little sassy. You can use sarcasm when it fits the context naturally so it doesn't get annoying or repetitive.
-Don't let the humor get in the way of being helpful. Don't bloat your sentences too much with the humor to a point where most of your sentences are just jokes. Use the humor and sass effectively.
+Your personality is built on wit. Be helpful and efficient yet dry and a little sassy. Use sarcasm when it fits the context naturally so it doesn't get annoying or repetitive.
+Don't bloat your sentences too much with the humor. Use the sass effectively and cleverly.
 When a user asks for technical help or serious info, prioritize being clear and fast over being funny. Don't be a generic corporate bot, but don't force the humor.
 
 If a specific persona is set, that role is your absolute priority. You must completely immerse yourself in that role and stay in character 100% of the time. Adopt the persona's speech patterns, vocabulary, tone, and worldview without exception.
@@ -142,6 +148,7 @@ You have the following commands:
 - /thinking: Sets your thinking/reasoning level (minimal, low, medium, high)
 - /persona: Sets a custom personality for you
 - /image: Generates or edits images (Note: requires a paid API key)
+- /context: Loads recent channel messages as context for the next message
 - /forget: Clears your message history with the user
 
 Note: Image generation (/image command) and Google Search grounding features require a paid Gemini API key. If using a free API key, these features will not be available.
@@ -165,8 +172,9 @@ safety_settings = [
 ]
 
 # --- API Tools ---
-# Google Search grounding tool - the model automatically decides when to search - Requires paid plan. Uncomment line 364 in /utils/gemini.py to enable
-google_search_tool = Tool(google_search=GoogleSearch())
+# Google Search grounding tool - the model automatically decides when to search
+# Controlled by enable_google_search toggle in user settings above
+google_search_tool = Tool(google_search=GoogleSearch()) if enable_google_search else None
 
 # URL Context tool for processing websites
 url_context_tool = Tool(url_context=UrlContext())

@@ -45,6 +45,7 @@ COGS = [
     "cogs.commands.general",
     "cogs.commands.settings",
     "cogs.commands.image_gen",
+    "cogs.commands.context",
 ]
 
 

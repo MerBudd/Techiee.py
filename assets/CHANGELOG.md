@@ -5,11 +5,17 @@
 ### Added
 - **Dynamic Date/Time Awareness**: Techiee now knows the current date and time in every conversation.
 - **User Identification**: System prompt now includes the user's display name and @username.
-- **Paid API Feature Notes**: System prompt now informs the user that image generation and Google Search grounding require a paid API key.
+- **System Prompt Paid Feature Notes**: System prompt now informs Techiee that image generation and Google Search grounding require a paid API key.
+- **`/context` Command**: New slash command to load recent channel messages as context for your next message.
+  - Fetches messages from other users (excludes your own messages and Techiee's replies to you).
+  - Context is used for your next message only, then automatically cleared.
+  - Works with all content types: text, images, videos, files, YouTube URLs, and website URLs.
 
 ### Changed
 - **System Prompt Architecture**: Converted static `system_instruction` to a dynamic `get_system_instruction()` function that generates context-aware prompts.
 - **System Prompt update**: Updated system prompt slightly to clarify humor and sass.
+- **Configs Reorganization**: Reorganized `config.py` for better organization.
+- **Google Search Grounding**: Changed Google search grounding tool on/off switching from being manual code un-commenting to a toggle in `config.py`
 
 ## [2.4.0] - 2026-01-28
 
