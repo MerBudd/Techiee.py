@@ -63,7 +63,7 @@ class TextProcessor(commands.Cog):
             async def retry_callback():
                 return await generate_response_with_text(contents, settings, user_display_name, user_username)
             
-            await send_response_with_retry(message, response_text, retry_callback)
+            await send_response_with_retry(message, response_text, retry_callback, history_key=history_key)
             return
         
         # Create user content with text part
@@ -88,7 +88,7 @@ class TextProcessor(commands.Cog):
             model_content = create_model_content(response_text)
             update_message_history(message, model_content)
         
-        await send_response_with_retry(message, response_text, retry_callback, update_history)
+        await send_response_with_retry(message, response_text, retry_callback, update_history, history_key)
 
 
 async def setup(bot):

@@ -81,6 +81,7 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 * **🎨 Image Generation**: Use `/image` to generate new images or edit existing ones! Note: requires a paid API key.
 * **🌐 Web & YouTube Integration**: Share a website URL or YouTube video and we can chat about it.
 * **🗑️ Interactive Actions**: React to my messages with 🗑️ to delete them or 🔄 to regenerate my response!
+* **⚙️ Shared Settings**: In threads and tracked channels, settings changes are visible to everyone, keeping the whole group in sync!
 
 ## Commands:
 

@@ -8,6 +8,7 @@ import asyncio
 from config import tracked_channels
 from utils.helpers import clean_discord_message, extract_url, is_youtube_url
 from utils.gemini import tracked_threads, get_settings, has_auto_respond_for_channel
+from utils.typing import typing_manager
 
 from utils.reply_chain import fetch_reply_chain
 
@@ -56,8 +57,9 @@ class Router(commands.Cog):
                 except Exception as e:
                     print(f"⚠️ Failed to fetch reply chain: {e}")
             
-            # Use Discord's built-in typing context manager
-            async with message.channel.typing():
+            # Start typing indicator with reference counting (handles concurrent messages)
+            await typing_manager.start_typing(message.channel)
+            try:
                 # Check for attachments
                 if message.attachments:
                     # Collect all attachments by type
@@ -117,6 +119,9 @@ class Router(commands.Cog):
                     text_processor = self.bot.get_cog('TextProcessor')
                     if text_processor:
                         await text_processor.process(message, cleaned_text, settings, reply_chain_context)
+            finally:
+                # Always stop typing when done (ref-counted, so only stops when all done)
+                await typing_manager.stop_typing(message.channel)
 
 
 async def setup(bot):

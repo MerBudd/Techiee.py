@@ -88,6 +88,10 @@ class ThinkingSelect(ui.Select):
             view=SettingsView(settings_key, scope_msg)
         )
 
+        # Broadcast change if in tracked channel or thread
+        if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
+            await interaction.channel.send(f"🧠 Thinking level set to **{self.values[0]}** for {scope_msg}.")
+
 
 class PersonaModal(ui.Modal, title="Set Custom Persona"):
     """Modal for setting a custom persona."""
@@ -112,11 +116,19 @@ class PersonaModal(ui.Modal, title="Set Custom Persona"):
             current_settings["persona"] = None
             set_settings_for_context(self.settings_key, current_settings)
             await interaction.response.send_message(f"🎭 Persona reset to default for {self.scope_msg}.", ephemeral=True)
+            
+            # Broadcast change if in tracked channel or thread
+            if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
+                await interaction.channel.send(f"🎭 Persona reset to default for {self.scope_msg}.")
         else:
             current_settings["persona"] = self.persona_input.value
             set_settings_for_context(self.settings_key, current_settings)
             persona_preview = self.persona_input.value[:100] + "..." if len(self.persona_input.value) > 100 else self.persona_input.value
             await interaction.response.send_message(f"🎭 Persona set for {self.scope_msg}:\n> {persona_preview}", ephemeral=True)
+
+            # Broadcast change if in tracked channel or thread
+            if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
+                await interaction.channel.send(f"🎭 Persona set for {self.scope_msg}:\n> {persona_preview}")
 
 
 class PersonaButton(ui.Button):
@@ -200,6 +212,10 @@ class ContextModal(ui.Modal, title="Load Context"):
                 f"✅ Loaded {len(messages)} messages as context. Will persist for your next {duration} messages.",
                 ephemeral=True
             )
+
+            # Broadcast change if in tracked channel or thread
+            if interaction.channel_id in tracked_channels or interaction.channel_id in tracked_threads:
+                await interaction.channel.send(f"✅ Loaded {len(messages)} messages as context. Will persist for your next {duration} messages.")
         except Exception as e:
             await interaction.followup.send(f"❌ Error loading context: {str(e)}", ephemeral=True)
 
@@ -232,6 +248,10 @@ class ResetButton(ui.Button):
             content=f"✅ All settings reset to default for {self.scope_msg}.",
             view=SettingsView(self.settings_key, self.scope_msg, interaction.user.id, interaction.channel)
         )
+        
+        # Broadcast change if in tracked channel or thread
+        if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
+            await interaction.channel.send(f"✅ All settings reset to default for {self.scope_msg}.")
 
 
 class SettingsView(ui.View):
@@ -317,6 +337,13 @@ class Settings(commands.Cog):
         set_settings_for_context(settings_key, current_settings)
         
         await interaction.followup.send(f"🧠 Thinking level set to **{level.value}** for {scope_msg}.")
+        
+        # Broadcast change if in tracked channel or thread (followup.send is already visible if not ephemeral, but wait... thinking command is public by default?)
+        # thinking command doesn't have ephemeral=True in defer, so it's public.
+        # But wait, get_settings_key_from_interaction doesn't determine ephemerality for thinking command.
+        # The user said "/settings menu ephemeral". thinking command is separate.
+        # Assuming thinking command should be public anyway.
+        # No change needed here for existing public commands.
     
     @app_commands.command(name='persona', description='Set a custom persona for the AI.')
     @app_commands.describe(description='The persona description (leave empty or use "default" to reset)')

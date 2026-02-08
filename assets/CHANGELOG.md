@@ -1,5 +1,12 @@
 # Changelog
-#
+
+## [2.6.2-exp] - 2026-02-08 (Experimental)
+
+### Fixed
+- **Message History Sync**: Fixed an issue where deleting or regenerating a response (via reactions) wouldn't update the bot's memory. The bot now correctly forgets deleted messages and remembers regenerated ones.
+- **Typing Indicator**: Fixed the typing indicator stopping too early or persisting incorrectly. It now uses reference counting to stay active exactly as long as needed, even when multiple people are chatting at once.
+- **Settings Visibility**: Settings changes made via `/settings` in tracked channels are now visible to everyone in the channel, similar to how they work in threads.
+
 ## [2.6.1-exp] - 2026-02-08 (Experimental)
 
 ### Fixed

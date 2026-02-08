@@ -201,6 +201,12 @@ class Reactions(commands.Cog):
                     if history[i].role == "model":
                         history.pop(i)
                         break
+                
+                # Add the new regenerated response to history
+                if new_response:
+                    from utils.gemini import create_model_content
+                    model_content = create_model_content(new_response)
+                    history.append(model_content)
             
             # Send new response (outside typing block to stop indicator)
             from cogs.reactions import add_reaction_buttons

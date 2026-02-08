@@ -53,7 +53,7 @@ class RetryView(ui.View):
     - Deletes error message and sends success response normally
     """
     
-    def __init__(self, author_id, original_message, retry_callback, update_history_callback=None, max_retries=5, timeout=120):
+    def __init__(self, author_id, original_message, retry_callback, update_history_callback=None, history_key=None, max_retries=5, timeout=120):
         """Initialize the retry view.
         
         Args:
@@ -61,6 +61,7 @@ class RetryView(ui.View):
             original_message: The original Discord message to reply to
             retry_callback: Async function to call on retry that returns response_text
             update_history_callback: Optional async function to update history on success
+            history_key: Tuple key for message_history (for delete/regenerate sync)
             max_retries: Maximum number of retry attempts
             timeout: View timeout in seconds
         """
@@ -69,6 +70,7 @@ class RetryView(ui.View):
         self.original_message = original_message
         self.retry_callback = retry_callback
         self.update_history_callback = update_history_callback
+        self.history_key = history_key
         self.max_retries = max_retries
         self.retry_count = 0
         self.error_message = None  # Will be set after sending
@@ -172,7 +174,8 @@ class RetryView(ui.View):
                     author_id=self.original_message.author.id,
                     original_message=self.original_message,
                     regenerate_callback=self.retry_callback,
-                    all_message_ids=all_ids
+                    all_message_ids=all_ids,
+                    history_key=self.history_key
                 )
                 await add_reaction_buttons(last_msg)
             
@@ -192,7 +195,7 @@ class RetryView(ui.View):
                 pass
 
 
-async def send_response_with_retry(message, response_text, retry_callback, update_history_callback=None):
+async def send_response_with_retry(message, response_text, retry_callback, update_history_callback=None, history_key=None):
     """Send a response, showing a retry button if it's a 503 error.
     
     Args:
@@ -200,6 +203,7 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
         response_text: The response text from Gemini API
         retry_callback: Async function to call on retry that returns new response_text
         update_history_callback: Optional async function to call on success with the response_text
+        history_key: Tuple key for message_history (for delete/regenerate sync)
     
     Returns:
         True if response was sent successfully (either initially or after retry flow started),
@@ -214,7 +218,8 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
             author_id=message.author.id,
             original_message=message,
             retry_callback=retry_callback,
-            update_history_callback=update_history_callback
+            update_history_callback=update_history_callback,
+            history_key=history_key
         )
         
         # Send error message with retry button
@@ -250,7 +255,8 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
                 author_id=message.author.id,
                 original_message=message,
                 regenerate_callback=retry_callback,
-                all_message_ids=all_ids
+                all_message_ids=all_ids,
+                history_key=history_key
             )
             await add_reaction_buttons(last_msg)
         

@@ -37,8 +37,8 @@ class Context(commands.Cog):
         elif lasts_for > 20:
             lasts_for = 20
         
-        # Defer with ephemeral response
-        await interaction.response.defer(ephemeral=True)
+        # Defer with public response (so everyone sees context is loaded)
+        await interaction.response.defer(ephemeral=False)
         
         user_id = interaction.user.id
         bot_id = self.bot.user.id
@@ -82,7 +82,7 @@ class Context(commands.Cog):
                 filter_note = " (your messages and my replies to you are excluded)" if is_tracked else " (my replies to you are excluded)"
                 await interaction.followup.send(
                     f"❌ No messages found to load as context{filter_note}.",
-                    ephemeral=True
+                    ephemeral=False
                 )
                 return
             
@@ -134,21 +134,31 @@ class Context(commands.Cog):
             if not is_tracked:
                 include_note = " (including your own)"
             
+            # Determine scope message for response
+            if channel_id in tracked_threads:
+                scope_msg = "this thread"
+            elif is_dm:
+                scope_msg = "your DMs"
+            elif channel_id in tracked_channels:
+                scope_msg = f"{interaction.user.mention} in this tracked channel"
+            else:
+                scope_msg = f"{interaction.user.mention} via @mentions"
+
             await interaction.followup.send(
-                f"✅ **Context loaded!** {len(messages)} message(s){include_note} from this channel are now cached.\n\n"
+                f"✅ **Context loaded!** {len(messages)} message(s){include_note} from this channel are now cached for **{scope_msg}**.\n\n"
                 f"📝 **Send your prompts** - the context will be used for your next **{lasts_for}** message(s).{auto_respond_note}",
-                ephemeral=True
+                ephemeral=False
             )
             
         except discord.Forbidden:
             await interaction.followup.send(
                 "❌ I don't have permission to read message history in this channel.",
-                ephemeral=True
+                ephemeral=False
             )
         except Exception as e:
             await interaction.followup.send(
                 f"❌ Error loading context: {str(e)}",
-                ephemeral=True
+                ephemeral=False
             )
 
 

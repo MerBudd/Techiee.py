@@ -88,7 +88,7 @@ class FileProcessor(commands.Cog):
                 model_content = create_model_content(response_text)
                 update_message_history(message, model_content)
         
-        await send_response_with_retry(message, response_text, retry_callback, update_history)
+        await send_response_with_retry(message, response_text, retry_callback, update_history, history_key)
 
 
 async def setup(bot):
