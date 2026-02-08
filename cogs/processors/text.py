@@ -14,7 +14,9 @@ from utils.gemini import (
     create_model_content,
     get_pending_context,
     decrement_pending_context,
+    get_history_key,
 )
+
 from config import max_history
 
 
@@ -43,11 +45,13 @@ class TextProcessor(commands.Cog):
         user_display_name = message.author.display_name
         user_username = message.author.name
         
-        # Check for pending context from /context command
-        pending_ctx = get_pending_context(message.author.id)
+        # Check for pending context from /context command (scoped by history key)
+        history_key = get_history_key(message)
+        pending_ctx = get_pending_context(history_key)
         if pending_ctx:
-            remaining = decrement_pending_context(message.author.id)
+            remaining = decrement_pending_context(history_key)
             print(f"📚 Using pending context ({len(pending_ctx)} messages) for {message.author.name}, {remaining} uses left")
+
         
         # Regular text conversation with history
         if max_history == 0:

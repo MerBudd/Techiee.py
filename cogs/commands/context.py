@@ -54,7 +54,7 @@ class Context(commands.Cog):
             messages = []
             async for msg in interaction.channel.history(limit=count * 3):
                 # Skip the command invocation itself (if present)
-                if msg.interaction and msg.interaction.id == interaction.id:
+                if msg.interaction_metadata and msg.interaction_metadata.id == interaction.id:
                     continue
                 
                 # In tracked channels/threads: skip user's own messages
@@ -110,9 +110,20 @@ class Context(commands.Cog):
                 context_contents.append(Content(role="user", parts=[Part(text=text)]))
             
             # Store in pending context
+            # Build context_key based on where we are (same logic as history keys)
+            if channel_id in tracked_threads:
+                context_key = ("thread", channel_id)
+            elif is_dm:
+                context_key = ("dm", user_id)
+            elif channel_id in tracked_channels:
+                context_key = ("tracked", user_id)
+            else:
+                context_key = ("mention", user_id)
+            
             # For non-tracked channels (not DM, not tracked), set listen_channel_id for auto-response
             listen_channel = None if (is_tracked or is_dm) else channel_id
-            set_pending_context(user_id, context_contents, remaining_uses=lasts_for, listen_channel_id=listen_channel)
+            set_pending_context(context_key, context_contents, remaining_uses=lasts_for, listen_channel_id=listen_channel)
+
             
             # Build response message
             auto_respond_note = ""

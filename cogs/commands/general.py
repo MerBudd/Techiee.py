@@ -17,8 +17,13 @@ class General(commands.Cog):
     
     @app_commands.command(name='help', description='Shows help(ful) info and commands for Techiee.')
     async def help(self, interaction: discord.Interaction):
-        # Display help information.
-        await interaction.response.send_message(help_text)
+        # Display help information using embed (supports up to 4096 chars)
+        embed = discord.Embed(
+            title="<:techiee:1465670132050300960> Techiee Help",
+            description=help_text[help_text.find("Hey there!"):],  # Skip the header
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed)
     
     @app_commands.command(name='createthread', description='Create a thread in which Techiee will respond to every message.')
     async def create_thread(self, interaction: discord.Interaction, name: str):

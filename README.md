@@ -30,7 +30,7 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 - **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
 
 >[!NOTE]
-> Personas and Thinking levels only apply to the user who used the command in DMs, @mentions, and tracked channels. In threads created with `/createthread`, they apply to everyone.
+> Settings (thinking, persona) and Context are isolated to prevent "slipping" between different conversations. In shared spaces like threads created with `/createthread`, settings apply to everyone. In DMs and tracked channels, they are private to you.
 
 ## Configuration
 
@@ -43,7 +43,7 @@ You can tweak all bot settings, including safety filters, model parameters, and 
 - `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
 - `/persona <description>`: Sets a custom personality. Use `/persona default` to reset.
 - `/context <count> [lasts_for]`: Loads channel messages as context for your next prompts. In non-tracked channels, Techiee will auto-respond without needing @mention.
-- `/settings`: Interactive menu to view and adjust AI settings (thinking level, persona).
+- `/settings`: Interactive menu to view and adjust AI settings (thinking, persona, and context loading with custom options).
 - `/conversation-summary`: Generates an AI summary of your conversation history.
 - `/forget`: Clears your message history with Techiee.
 - `/image`: Generates or edits an image using Nano Banana (requires paid API key).

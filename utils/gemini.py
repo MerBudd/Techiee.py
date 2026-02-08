@@ -157,113 +157,135 @@ default_settings = {
 pending_context = {}
 
 
-def set_pending_context(user_id, contents, remaining_uses=1, listen_channel_id=None):
-    """Store pending context for a user (used by /context command).
+def set_pending_context(context_key, contents, remaining_uses=1, listen_channel_id=None):
+    """Store pending context for a specific context (used by /context command).
     
     Args:
-        user_id: Discord user ID
+        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
         contents: List of Content objects to use as context
         remaining_uses: Number of messages the context should persist for
         listen_channel_id: Optional channel ID where bot should auto-respond without @mention
     """
-    pending_context[user_id] = {
+    pending_context[context_key] = {
         "contents": contents,
         "remaining_uses": remaining_uses,
         "listen_channel_id": listen_channel_id,
     }
 
 
-def get_pending_context(user_id):
-    """Retrieve pending context for a user without clearing it.
+
+def get_pending_context(context_key):
+    """Retrieve pending context for a specific context without clearing it.
     
     Args:
-        user_id: Discord user ID
+        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
     
     Returns:
         List of Content objects, or empty list if no pending context.
     """
-    ctx = pending_context.get(user_id)
+    ctx = pending_context.get(context_key)
     if ctx:
         return ctx["contents"]
     return []
 
 
-def decrement_pending_context(user_id):
-    """Decrement the remaining uses for a user's pending context.
+def decrement_pending_context(context_key):
+    """Decrement the remaining uses for a context's pending context.
     
     Call this after using context in a message. Clears context when uses reach 0.
     
     Args:
-        user_id: Discord user ID
+        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
     
     Returns:
         Remaining uses after decrement, or 0 if no context.
     """
-    ctx = pending_context.get(user_id)
+    ctx = pending_context.get(context_key)
     if ctx:
         ctx["remaining_uses"] -= 1
         if ctx["remaining_uses"] <= 0:
-            del pending_context[user_id]
+            del pending_context[context_key]
             return 0
         return ctx["remaining_uses"]
     return 0
 
 
-def get_and_clear_pending_context(user_id):
-    """Retrieve and clear pending context for a user (legacy, clears immediately).
+def get_and_clear_pending_context(context_key):
+    """Retrieve and clear pending context for a context (legacy, clears immediately).
     
     Args:
-        user_id: Discord user ID
+        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
     
     Returns:
         List of Content objects, or empty list if no pending context.
     """
-    ctx = pending_context.pop(user_id, None)
+    ctx = pending_context.pop(context_key, None)
     if ctx:
         return ctx["contents"]
     return []
 
 
-def has_pending_context(user_id):
-    """Check if a user has pending context.
+def has_pending_context(context_key):
+    """Check if a context has pending context.
     
     Args:
-        user_id: Discord user ID
+        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
     
     Returns:
-        True if user has pending context, False otherwise.
+        True if context has pending context, False otherwise.
     """
-    return user_id in pending_context
+    return context_key in pending_context
 
 
-def get_pending_context_channel(user_id):
-    """Get the channel ID where bot should auto-respond for this user.
+def get_pending_context_channel(context_key):
+    """Get the channel ID where bot should auto-respond for this context.
     
     Args:
-        user_id: Discord user ID
+        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
     
     Returns:
         Channel ID or None if no auto-respond channel set.
     """
-    ctx = pending_context.get(user_id)
+    ctx = pending_context.get(context_key)
     if ctx:
         return ctx.get("listen_channel_id")
     return None
 
 
-def get_pending_context_remaining(user_id):
-    """Get remaining uses for a user's pending context.
+def get_pending_context_remaining(context_key):
+    """Get remaining uses for a context's pending context.
     
     Args:
-        user_id: Discord user ID
+        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
     
     Returns:
         Remaining uses, or 0 if no context.
     """
-    ctx = pending_context.get(user_id)
+    ctx = pending_context.get(context_key)
     if ctx:
         return ctx["remaining_uses"]
     return 0
+
+
+def has_auto_respond_for_channel(user_id, channel_id):
+    """Check if user has pending context set to auto-respond in this channel.
+    
+    This is used by the router to determine if bot should respond without @mention.
+    
+    Args:
+        user_id: Discord user ID
+        channel_id: Channel ID to check
+    
+    Returns:
+        True if any of user's pending contexts has this channel as listen_channel_id.
+    """
+    for ctx_key, ctx_data in pending_context.items():
+        # Check if this context belongs to this user
+        if len(ctx_key) >= 2 and ctx_key[1] == user_id:
+            if ctx_data.get("listen_channel_id") == channel_id:
+                return True
+    return False
+
 
 
 # --- Settings Management ---

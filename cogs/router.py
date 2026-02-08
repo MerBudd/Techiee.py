@@ -7,7 +7,8 @@ import asyncio
 
 from config import tracked_channels
 from utils.helpers import clean_discord_message, extract_url, is_youtube_url
-from utils.gemini import tracked_threads, get_settings, get_pending_context_channel
+from utils.gemini import tracked_threads, get_settings, has_auto_respond_for_channel
+
 from utils.reply_chain import fetch_reply_chain
 
 
@@ -36,8 +37,7 @@ class Router(commands.Cog):
         bot_mentioned = self.bot.user in message.mentions
         
         # Check if user has pending context for this channel (auto-respond without @mention)
-        pending_context_channel = get_pending_context_channel(message.author.id)
-        has_context_for_channel = pending_context_channel == message.channel.id
+        has_context_for_channel = has_auto_respond_for_channel(message.author.id, message.channel.id)
 
         # Check if the message is a DM, in tracked channels/threads, mentions the bot, or has pending context for this channel
         if isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads or bot_mentioned or has_context_for_channel:

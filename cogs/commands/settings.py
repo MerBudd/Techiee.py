@@ -26,21 +26,22 @@ def get_settings_key_from_interaction(interaction: discord.Interaction):
     """Get the appropriate settings key from an interaction (slash command context)."""
     channel_id = interaction.channel.id
     user_id = interaction.user.id
+    user_mention = interaction.user.mention
     
-    # Thread context
+    # Thread context (shared by everyone in thread)
     if channel_id in tracked_threads:
-        return ("thread", channel_id), "this thread"
+        return (("thread", channel_id), "this thread", True)  # is_shared=True
     
     # DM context
     if isinstance(interaction.channel, discord.DMChannel):
-        return ("dm", user_id), "your DMs"
+        return (("dm", user_id), "your DMs", False)
     
-    # Tracked channel context
+    # Tracked channel context (per-user in tracked channel)
     if channel_id in tracked_channels:
-        return ("tracked", user_id), "this tracked channel"
+        return (("tracked", user_id), f"{user_mention} in this tracked channel", False)
     
     # @mention context
-    return ("mention", user_id), "your @mentions"
+    return (("mention", user_id), f"{user_mention} via @mentions", False)
 
 
 class ThinkingSelect(ui.Select):
@@ -76,7 +77,7 @@ class ThinkingSelect(ui.Select):
         super().__init__(placeholder="Select thinking level...", options=options, custom_id="thinking_select")
     
     async def callback(self, interaction: discord.Interaction):
-        settings_key, scope_msg = get_settings_key_from_interaction(interaction)
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
         current_settings = context_settings.get(settings_key, default_settings.copy())
         current_settings["thinking_level"] = self.values[0]
         set_settings_for_context(settings_key, current_settings)
@@ -130,6 +131,92 @@ class PersonaButton(ui.Button):
         modal = PersonaModal(self.settings_key, self.scope_msg)
         await interaction.response.send_modal(modal)
 
+class ContextModal(ui.Modal, title="Load Context"):
+    """Modal for customizing context loading."""
+    
+    count = ui.TextInput(
+        label="Number of messages to load (1-50)",
+        default="10",
+        min_length=1,
+        max_length=2,
+        placeholder="10"
+    )
+    lasts_for = ui.TextInput(
+        label="Context lasts for X messages (1-20)",
+        default="5",
+        min_length=1,
+        max_length=2,
+        placeholder="5"
+    )
+    
+    def __init__(self, context_key, channel):
+        super().__init__()
+        self.context_key = context_key
+        self.channel = channel
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        # Parse and validate inputs
+        try:
+            count = max(1, min(50, int(self.count.value)))
+        except ValueError:
+            count = 10
+        try:
+            duration = max(1, min(20, int(self.lasts_for.value)))
+        except ValueError:
+            duration = 5
+        
+        bot = interaction.client
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Fetch messages from channel history
+            messages = []
+            async for msg in self.channel.history(limit=count * 3):
+                if msg.author.id == bot.user.id:
+                    continue
+                messages.append(msg)
+                if len(messages) >= count:
+                    break
+            
+            if not messages:
+                await interaction.followup.send("❌ No messages found to load as context.", ephemeral=True)
+                return
+            
+            messages.reverse()
+            
+            from google.genai.types import Part, Content
+            context_contents = []
+            for msg in messages:
+                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
+                text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
+                if msg.attachments:
+                    attachment_names = [att.filename for att in msg.attachments]
+                    text += f" [Attachments: {', '.join(attachment_names)}]"
+                context_contents.append(Content(role="user", parts=[Part(text=text)]))
+            
+            set_pending_context(self.context_key, context_contents, remaining_uses=duration, listen_channel_id=None)
+            
+            await interaction.followup.send(
+                f"✅ Loaded {len(messages)} messages as context. Will persist for your next {duration} messages.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error loading context: {str(e)}", ephemeral=True)
+
+
+class ContextButton(ui.Button):
+    """Button to load context from channel history."""
+    
+    def __init__(self, context_key, channel, has_context=False):
+        label = "📖 Refresh Context" if has_context else "📖 Load Context"
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, custom_id="context_button")
+        self.context_key = context_key
+        self.channel = channel
+    
+    async def callback(self, interaction: discord.Interaction):
+        # Bug 2: Show modal to let user choose count and duration
+        modal = ContextModal(self.context_key, self.channel)
+        await interaction.response.send_modal(modal)
 
 class ResetButton(ui.Button):
     """Button to reset all settings to default."""
@@ -147,64 +234,6 @@ class ResetButton(ui.Button):
         )
 
 
-class ContextButton(ui.Button):
-    """Button to load context from channel history."""
-    
-    def __init__(self, user_id, channel, has_context=False):
-        label = "📖 Refresh Context" if has_context else "📖 Load Context"
-        super().__init__(label=label, style=discord.ButtonStyle.secondary, custom_id="context_button")
-        self.user_id = user_id
-        self.channel = channel
-    
-    async def callback(self, interaction: discord.Interaction):
-        # Load 10 messages of context that lasts for 5 messages (default values)
-        # This is a simplified version - loads context like /context command
-        bot = interaction.client
-        user_id = interaction.user.id
-        channel = self.channel
-        
-        await interaction.response.defer(ephemeral=True)
-        
-        try:
-            # Fetch messages from channel history
-            messages = []
-            async for msg in channel.history(limit=30):
-                # Skip bot's own messages
-                if msg.author.id == bot.user.id:
-                    continue
-                messages.append(msg)
-                if len(messages) >= 10:
-                    break
-            
-            if not messages:
-                await interaction.followup.send("❌ No messages found to load as context.", ephemeral=True)
-                return
-            
-            # Reverse to get chronological order
-            messages.reverse()
-            
-            # Convert to Content objects
-            from google.genai.types import Part, Content
-            context_contents = []
-            for msg in messages:
-                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
-                text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
-                if msg.attachments:
-                    attachment_names = [att.filename for att in msg.attachments]
-                    text += f" [Attachments: {', '.join(attachment_names)}]"
-                context_contents.append(Content(role="user", parts=[Part(text=text)]))
-            
-            # Store in pending context (lasts for 5 messages, no auto-respond)
-            set_pending_context(user_id, context_contents, remaining_uses=5, listen_channel_id=None)
-            
-            await interaction.followup.send(
-                f"✅ Loaded {len(messages)} messages as context. Will persist for your next 5 messages.",
-                ephemeral=True
-            )
-        except Exception as e:
-            await interaction.followup.send(f"❌ Error loading context: {str(e)}", ephemeral=True)
-
-
 class SettingsView(ui.View):
     """View containing all settings controls."""
     
@@ -219,12 +248,12 @@ class SettingsView(ui.View):
         
         # Add buttons
         self.add_item(PersonaButton(settings_key, scope_msg))
+        # Add context button if we have channel (settings_key serves as context_key)
+        if channel:
+            has_context = settings_key in pending_context
+            self.add_item(ContextButton(settings_key, channel, has_context))
         self.add_item(ResetButton(settings_key, scope_msg))
-        
-        # Add context button if we have user_id and channel
-        if user_id and channel:
-            has_context = user_id in pending_context
-            self.add_item(ContextButton(user_id, channel, has_context))
+
 
 
 
@@ -237,7 +266,7 @@ class Settings(commands.Cog):
     @app_commands.command(name='settings', description='View and adjust AI settings with an interactive menu.')
     async def settings(self, interaction: discord.Interaction):
         """Open the interactive settings menu."""
-        settings_key, scope_msg = get_settings_key_from_interaction(interaction)
+        settings_key, scope_msg, is_shared = get_settings_key_from_interaction(interaction)
         current_settings = context_settings.get(settings_key, default_settings.copy())
         user_id = interaction.user.id
         
@@ -246,8 +275,8 @@ class Settings(commands.Cog):
         persona = current_settings.get("persona")
         persona_display = f'"{persona[:50]}..."' if persona and len(persona) > 50 else (f'"{persona}"' if persona else "Default")
         
-        # Get context status
-        ctx = pending_context.get(user_id)
+        # Get context status (use settings_key as context_key)
+        ctx = pending_context.get(settings_key)
         if ctx:
             ctx_count = len(ctx.get("contents", []))
             ctx_remaining = ctx.get("remaining_uses", 0)
@@ -267,7 +296,8 @@ class Settings(commands.Cog):
         embed.set_footer(text="Use the controls below to adjust settings")
         
         view = SettingsView(settings_key, scope_msg, user_id, interaction.channel)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        # Bug 9: Thread settings should be public (not ephemeral) so everyone can see
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=not is_shared)
 
     
     @app_commands.command(name='thinking', description='Set the AI thinking level for reasoning depth.')
@@ -281,7 +311,7 @@ class Settings(commands.Cog):
         """Set the AI thinking/reasoning level."""
         await interaction.response.defer()
         
-        settings_key, scope_msg = get_settings_key_from_interaction(interaction)
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
         current_settings = context_settings.get(settings_key, default_settings.copy())
         current_settings["thinking_level"] = level.value
         set_settings_for_context(settings_key, current_settings)
@@ -292,7 +322,7 @@ class Settings(commands.Cog):
     @app_commands.describe(description='The persona description (leave empty or use "default" to reset)')
     async def persona(self, interaction: discord.Interaction, description: str = None):
         """Set a custom persona for the AI."""
-        settings_key, scope_msg = get_settings_key_from_interaction(interaction)
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
         current_settings = context_settings.get(settings_key, default_settings.copy())
         
         if description is None or description.lower() == "default":
@@ -309,7 +339,7 @@ class Settings(commands.Cog):
         """Generate a summary of the conversation history."""
         await interaction.response.defer()
         
-        settings_key, scope_msg = get_settings_key_from_interaction(interaction)
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
         history_key = settings_key  # They use the same key format
         
         # Get conversation history

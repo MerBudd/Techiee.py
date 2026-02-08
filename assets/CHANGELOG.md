@@ -1,19 +1,31 @@
 # Changelog
 #
-# ## [2.6.0-exp] - 2026-02-07 (Experimental)
-# 
-# ### Added
-# - **Multi-Attachment Support**: Techiee can now process all attachments in a message simultaneously (up to Discord's limit), including mixed types like multiple images, videos, and documents.
-# - **Reaction-Based Actions**: Interactive reactions on bot responses:
-#   - 🗑️: Delete the bot's response (Author only).
-#   - 🔄: Regenerate the response (Author only).
-# - **Reply Chain Context**: Automatically fetches up to 10 previous messages in a reply chain to maintain context when you reply to an older message.
-# - **Interactive `/settings` Menu**: A comprehensive, GUI-based settings menu using Discord's dropdowns and buttons for managing thinking levels and personas.
-# - **`/conversation-summary` Command**: Generatesa concise summary of your current conversation history.
-# 
-# ### Changed
-+ - **Processor Architecture**: Updated all processor cogs to handle lists of attachments and reply chain context fragments.
-+ - **Response Tracking**: Implemented an LRU-cached Response Tracker for reaction processing.
+## [2.6.1-exp] - 2026-02-08 (Experimental)
+
+### Fixed
+- **Context Isolation & Scoping**: Resolved "context slipping" issues where context from one conversation (e.g., a DM) would bleed into others. Implemented distinct `context_key` tuples for DMs, tracked channels, threads, and @mentions.
+- **Interactive `/settings` Improvements**: 
+  - Added user mentions to scope messages in non-shared contexts for better clarity.
+  - Settings changes in tracked threads are now public (non-ephemeral), allowing all thread participants to see configuration changes.
+- **Context Loading UI**: Replaced fixed defaults in the `/settings` context button with an interactive `ContextModal`, allowing users to choose exactly how many messages to load and for how long the context persists.
+- **`/help` Command Stability**: Converted the long help text into a Discord Embed, fixing errors caused by exceeding Discord's 2000-character message limit.
+- **Deprecation Fixes**: Resolved `DeprecationWarning` related to `interaction.message` and `message.interaction` by migrating to modern Discord.py metadata fields.
+- **Processor Sync**: Updated all multimodal processors (images, videos, YouTube, websites, files) to correctly utilize the new context scoping logic.
+
+## [2.6.0-exp] - 2026-02-07 (Experimental)
+ 
+### Added
+- **Multi-Attachment Support**: Techiee can now process all attachments in a message simultaneously (up to Discord's limit), including mixed types like multiple images, videos, and documents.
+- **Reaction-Based Actions**: Interactive reactions on bot responses:
+  - 🗑️: Delete the bot's response (Author only).
+  - 🔄: Regenerate the response (Author only).
+- **Reply Chain Context**: Automatically fetches up to 10 previous messages in a reply chain to maintain context when you reply to an older message.
+- **Interactive `/settings` Menu**: A comprehensive, GUI-based settings menu using Discord's dropdowns and buttons for managing thinking levels and personas.
+- **`/conversation-summary` Command**: Generatesa concise summary of your current conversation history.
+ 
+### Changed
+- **Processor Architecture**: Updated all processor cogs to handle lists of attachments and reply chain context fragments.
+- **Response Tracking**: Implemented an LRU-cached Response Tracker for reaction processing.
 
 ## [2.5.0] - 2026-02-07
 
