@@ -39,6 +39,9 @@ class TypingManager:
     async def stop_typing(self, channel: discord.abc.Messageable):
         """Decrement typing count, stop if no more active processors.
         
+        Includes a small grace period before cancelling to prevent flicker
+        when multiple messages are being processed in quick succession.
+        
         Args:
             channel: Discord channel to stop typing indicator for
         """
@@ -47,15 +50,20 @@ class TypingManager:
             
             # Only stop typing if there are no more active processors
             if self._counts[channel.id] == 0 and channel.id in self._tasks:
-                task = self._tasks.pop(channel.id)
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+                # Small grace period to prevent flicker between overlapping messages
+                await asyncio.sleep(0.15)  # 150ms grace period
                 
-                # Cleanup stale data to prevent memory leak
-                self._counts.pop(channel.id, None)
+                # Re-check count after grace period (another processor may have started)
+                if self._counts.get(channel.id, 0) == 0 and channel.id in self._tasks:
+                    task = self._tasks.pop(channel.id)
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                    
+                    # Cleanup stale data to prevent memory leak
+                    self._counts.pop(channel.id, None)
         
         # Cleanup lock outside the lock context (if count is 0)
         if self._counts.get(channel.id, 0) == 0:

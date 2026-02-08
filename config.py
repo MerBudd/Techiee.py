@@ -98,15 +98,15 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 ## Commands:
 
 * `/help` - Shows this help message
-* `/settings` - Interactive menu to adjust my thinking level, persona, and load custom context
+* `/settings` - Open the settings panel to customize thinking depth, persona, and load conversation context
 * `/conversation-summary` - Generates an AI summary of our current chat history
-* `/createthread <name>` - Creates a thread where I'll respond to every message
-* `/thinking <level>` - Sets my thinking/reasoning depth (minimal, low, medium, high)
-* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset.
-* `/image <prompt> [image1..3] [aspect_ratio]` - Generate/edit images (requires paid API key)
-* `/context [count] [lasts_for]` - Load channel messages as context for your next prompts
-* `/forget` - Clears your message history for the current context (per-channel, thread, DM, or @mention. Clears added context if any.)
-* `/sync` - Syncs slash commands (owner only)
+* `/createthread <name>` - Create a dedicated thread where I'll respond to every message
+* `/thinking <level>` - Set my thinking/reasoning depth (minimal, low, medium, high)
+* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset
+* `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
+* `/context [count] [lasts_for] [include_user] [exclude_user]` - Load recent messages from this channel as context, letting me reference past conversations
+* `/forget` - Clear your conversation history with me in the current context (DM, thread, or channel)
+* `/sync` - Sync slash commands globally (admin only)
 
 -# *Note:* I'm still under development, so I might not always get things right."""
 

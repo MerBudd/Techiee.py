@@ -1,10 +1,27 @@
 # Changelog
 
+## [2.7.0-exp] - 2026-02-08 (Experimental)
+
+### Added
+- **Command Cooldowns**: Implemented per-command cooldowns (configurable in `config.py`) to prevent API spamming and rate limiting.
+- **Graceful Shutdown**: Added a shutdown handler that cancels active typing tasks and cleans up state when the bot disconnects.
+- **Enhanced `/context` Filters**: Added optional `include_user` and `exclude_user` filters to the `/context` command for more precise message loading.
+- **Multi-Admin Support**: Replaced single owner ID with a `discord_admin_ids` list in `config.py`, allowing multiple users to manage the bot.
+- **Global Error Handling**: Added a central Error Handler cog to handle cooldowns, permissions, and unexpected command failures gracefully.
+- **Multimodal Reply Chains**: Context from reply chains now includes actual image data, allowing Techiee to "see" images in previous messages when you reply to them.
+
+### Fixed
+- **Empty Response Crashes**: Added safety checks for `response.text` across all multimodal processors to prevent crashes on empty API results.
+- **LaTeX Math Rendering**: Conversion now strictly applies only to content within `$...$` and `$$...$$` delimiters, preventing unintended text modification.
+- **Typing Indicator Flicker**: Added a 150ms grace period to the `TypingManager` to ensure continuity when switching between concurrent message processors.
+- **Multimodal Processor Construction**: Fixed inconsistent `Content` object construction in image and video processors when message history was empty.
+- **Sync Command Hanging**: Added try/except handling and better user feedback to the `/sync` command.
+- **Memory Leak**: Implemented stale lock/count pruning in `TypingManager` to prevent long-term memory growth.
+
 ## [2.6.2-exp] - 2026-02-08 (Experimental)
 
 ### Fixed
 - **Message History Sync**: Fixed an issue where deleting or regenerating a response (via reactions) wouldn't update the bot's memory. The bot now correctly forgets deleted messages and remembers regenerated ones.
-- **Typing Indicator**: Fixed the typing indicator stopping too early or persisting incorrectly. It now uses reference counting to stay active exactly as long as needed, even when multiple people are chatting at once.
 - **Settings Visibility**: Settings changes made via `/settings` in tracked channels are now visible to everyone in the channel, similar to how they work in threads.
 
 ## [2.6.1-exp] - 2026-02-08 (Experimental)

@@ -48,60 +48,77 @@ async def fetch_reply_chain(message: discord.Message, max_depth: int = 10) -> li
     # Reverse to get oldest first
     chain_messages.reverse()
     
-    # Convert to Gemini Content objects
+    # Convert to Gemini Content objects (now async for image downloads)
     contents = []
     for msg in chain_messages:
-        content = format_message_for_context(msg)
+        content = await format_message_for_context(msg)
         if content:
             contents.append(content)
     
     return contents
 
 
-def format_message_for_context(message: discord.Message) -> Content:
+async def format_message_for_context(message: discord.Message) -> Content:
     """Format a Discord message as a Gemini Content object.
+    
+    Downloads and includes actual image attachments so Gemini can see them.
     
     Args:
         message: The Discord message to format
     
     Returns:
-        Content object with message info, or None if empty message.
+        Content object with message info and attachments, or None if empty message.
     """
+    import aiohttp
+    from google.genai.types import Part
+    
     # Build the context text with metadata
     timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
     display_name = message.author.display_name
     username = message.author.name
     
+    parts = []
+    
     # Distinguish bot vs user messages
     if message.author.bot:
         # Bot/assistant messages
         text = message.content if message.content else "[No text content]"
+        parts.append(Part(text=f"[{timestamp}]\n{text}"))
         
-        # Include attachment info if any
+        # For bot messages, just note attachments (don't download)
         if message.attachments:
-            attachment_info = ", ".join([f"[Attachment: {a.filename}]" for a in message.attachments])
-            text = f"{text}\n{attachment_info}"
+            attachment_info = ", ".join([f"[Sent attachment: {a.filename}]" for a in message.attachments])
+            parts.append(Part(text=attachment_info))
         
-        return Content(
-            role="model",
-            parts=[Part(text=f"[{timestamp}]\n{text}")]
-        )
+        return Content(role="model", parts=parts)
     else:
         # User messages
         text = message.content if message.content else "[No text content]"
-        
-        # Include attachment info if any
-        if message.attachments:
-            attachment_info = ", ".join([f"[Attachment: {a.filename}]" for a in message.attachments])
-            text = f"{text}\n{attachment_info}"
-        
-        # Format with user info
         formatted_text = f"[{timestamp}] {display_name} (@{username}):\n{text}"
+        parts.append(Part(text=formatted_text))
         
-        return Content(
-            role="user",
-            parts=[Part(text=formatted_text)]
-        )
+        # Download and include images/attachments
+        if message.attachments:
+            async with aiohttp.ClientSession() as session:
+                for attachment in message.attachments:
+                    # Check if it's an image
+                    if attachment.content_type and attachment.content_type.startswith('image/'):
+                        try:
+                            async with session.get(attachment.url) as resp:
+                                if resp.status == 200:
+                                    image_bytes = await resp.read()
+                                    parts.append(Part(inline_data={
+                                        "mime_type": attachment.content_type,
+                                        "data": image_bytes
+                                    }))
+                        except Exception as e:
+                            # If download fails, just note the filename
+                            parts.append(Part(text=f"[Failed to load image: {attachment.filename}]"))
+                    else:
+                        # Non-image attachments: just note the filename
+                        parts.append(Part(text=f"[Attachment: {attachment.filename}]"))
+        
+        return Content(role="user", parts=parts)
 
 
 def format_reply_chain_as_context_text(chain_contents: list) -> str:

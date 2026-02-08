@@ -31,6 +31,8 @@ bot = commands.Bot(
 
 # List of cogs to load - organized by category
 COGS = [
+    # Error handler - must load first for global error handling
+    "cogs.error_handler",
     # Processors - content type handlers
     "cogs.processors.text",
     "cogs.processors.images",
