@@ -145,7 +145,7 @@ class Context(commands.Cog):
                 scope_msg = f"{interaction.user.mention} via @mentions"
 
             await interaction.followup.send(
-                f"✅ **Context loaded!** {len(messages)} message(s){include_note} from this channel are now cached for **{scope_msg}**.\n\n"
+                f"✅ **Context loaded for {interaction.user.mention}!** {len(messages)} message(s){include_note} from this channel are now cached for **{scope_msg}**.\n\n"
                 f"📝 **Send your prompts** - the context will be used for your next **{lasts_for}** message(s).{auto_respond_note}",
                 ephemeral=False
             )

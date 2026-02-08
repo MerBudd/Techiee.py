@@ -30,7 +30,7 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 - **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
 
 >[!NOTE]
-> Settings (thinking, persona) and Context are isolated to prevent "slipping" between different conversations. In shared spaces like threads created with `/createthread` and tracked channels, settings apply to everyone. In DMs, they are private to you.
+> Settings (thinking, persona) and Context are isolated to prevent "slipping" between different conversations. In shared spaces like threads created with `/createthread`, settings apply to everyone. In DMs and tracked channels, they are private to you.
 
 ## Configuration
 

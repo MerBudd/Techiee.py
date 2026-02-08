@@ -82,15 +82,11 @@ class ThinkingSelect(ui.Select):
         current_settings["thinking_level"] = self.values[0]
         set_settings_for_context(settings_key, current_settings)
         
-        # Update the view to reflect new selection
-        await interaction.response.edit_message(
-            content=f"🧠 Thinking level set to **{self.values[0]}** for {scope_msg}.",
-            view=SettingsView(settings_key, scope_msg)
-        )
-
-        # Broadcast change if in tracked channel or thread
-        if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
-            await interaction.channel.send(f"🧠 Thinking level set to **{self.values[0]}** for {scope_msg}.")
+        # Acknowledge the interaction silently (don't edit the ephemeral settings menu)
+        await interaction.response.defer()
+        
+        # Always send a public message for the change
+        await interaction.channel.send(f"🧠 Thinking level set to **{self.values[0]}** for {scope_msg}.")
 
 
 class PersonaModal(ui.Modal, title="Set Custom Persona"):
@@ -112,23 +108,18 @@ class PersonaModal(ui.Modal, title="Set Custom Persona"):
     async def on_submit(self, interaction: discord.Interaction):
         current_settings = context_settings.get(self.settings_key, default_settings.copy())
         
+        # Acknowledge silently and send public message
+        await interaction.response.defer()
+        
         if not self.persona_input.value or self.persona_input.value.lower() == "default":
             current_settings["persona"] = None
             set_settings_for_context(self.settings_key, current_settings)
-            await interaction.response.send_message(f"🎭 Persona reset to default for {self.scope_msg}.", ephemeral=True)
-            
-            # Broadcast change if in tracked channel or thread
-            if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
-                await interaction.channel.send(f"🎭 Persona reset to default for {self.scope_msg}.")
+            await interaction.channel.send(f"🎭 Persona reset to default for {self.scope_msg}.")
         else:
             current_settings["persona"] = self.persona_input.value
             set_settings_for_context(self.settings_key, current_settings)
             persona_preview = self.persona_input.value[:100] + "..." if len(self.persona_input.value) > 100 else self.persona_input.value
-            await interaction.response.send_message(f"🎭 Persona set for {self.scope_msg}:\n> {persona_preview}", ephemeral=True)
-
-            # Broadcast change if in tracked channel or thread
-            if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
-                await interaction.channel.send(f"🎭 Persona set for {self.scope_msg}:\n> {persona_preview}")
+            await interaction.channel.send(f"🎭 Persona set for {self.scope_msg}:\n> {persona_preview}")
 
 
 class PersonaButton(ui.Button):
@@ -178,7 +169,8 @@ class ContextModal(ui.Modal, title="Load Context"):
             duration = 5
         
         bot = interaction.client
-        await interaction.response.defer(ephemeral=True)
+        user_mention = interaction.user.mention
+        await interaction.response.defer()
         
         try:
             # Fetch messages from channel history
@@ -191,7 +183,7 @@ class ContextModal(ui.Modal, title="Load Context"):
                     break
             
             if not messages:
-                await interaction.followup.send("❌ No messages found to load as context.", ephemeral=True)
+                await interaction.channel.send(f"❌ No messages found to load as context for {user_mention}.")
                 return
             
             messages.reverse()
@@ -208,16 +200,12 @@ class ContextModal(ui.Modal, title="Load Context"):
             
             set_pending_context(self.context_key, context_contents, remaining_uses=duration, listen_channel_id=None)
             
-            await interaction.followup.send(
-                f"✅ Loaded {len(messages)} messages as context. Will persist for your next {duration} messages.",
-                ephemeral=True
+            # Always send public message with user mention
+            await interaction.channel.send(
+                f"✅ Loaded {len(messages)} messages as context for {user_mention}. Will persist for your next {duration} messages."
             )
-
-            # Broadcast change if in tracked channel or thread
-            if interaction.channel_id in tracked_channels or interaction.channel_id in tracked_threads:
-                await interaction.channel.send(f"✅ Loaded {len(messages)} messages as context. Will persist for your next {duration} messages.")
         except Exception as e:
-            await interaction.followup.send(f"❌ Error loading context: {str(e)}", ephemeral=True)
+            await interaction.channel.send(f"❌ Error loading context for {user_mention}: {str(e)}")
 
 
 class ContextButton(ui.Button):
@@ -361,6 +349,25 @@ class Settings(commands.Cog):
             set_settings_for_context(settings_key, current_settings)
             await interaction.response.send_message(f"🎭 Persona set for {scope_msg}:\n> {description}")
     
+    @app_commands.command(name='reset-settings', description='Reset all AI settings (persona, thinking level, context) to defaults.')
+    async def reset_settings(self, interaction: discord.Interaction):
+        """Reset all AI settings to defaults for this context."""
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
+        
+        # Reset settings to defaults
+        set_settings_for_context(settings_key, default_settings.copy())
+        
+        # Clear any pending context
+        if settings_key in pending_context:
+            del pending_context[settings_key]
+        
+        await interaction.response.send_message(
+            f"🔄 All settings reset to default for {scope_msg}.\n"
+            f"• Thinking level: minimal\n"
+            f"• Persona: default\n"
+            f"• Loaded context: cleared"
+        )
+    
     @app_commands.command(name='conversation-summary', description='Get an AI-generated summary of the current conversation.')
     async def conversation_summary(self, interaction: discord.Interaction):
         """Generate a summary of the conversation history."""
@@ -381,14 +388,9 @@ class Settings(commands.Cog):
             return
         
         # Create a request for summary
-        summary_prompt = f"""Summarize the following conversation in a concise yet informative way.
-Include:
-- Main topics discussed
-- Key questions asked and answers given
-- Any important decisions or conclusions
-- Notable exchanges or highlights
-
-Keep the summary under 500 words and format it nicely with bullet points where appropriate.
+        summary_prompt = """Provide a brief summary of this conversation in 2-4 bullet points.
+Focus on: main topic, key conclusions or answers.
+Be extremely concise - aim for under 150 words total.
 
 Conversation to summarize:
 """
