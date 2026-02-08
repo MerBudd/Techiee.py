@@ -5,7 +5,7 @@ import discord
 from discord import app_commands, ui
 from discord.ext import commands
 
-from config import tracked_channels, max_history
+from config import tracked_channels, max_history, cooldowns
 from utils.gemini import (
     tracked_threads,
     context_settings,
@@ -271,7 +271,8 @@ class Settings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.command(name='settings', description='View and adjust AI settings with an interactive menu.')
+    @app_commands.checks.cooldown(1, cooldowns.get("settings", 5))
+    @app_commands.command(name='settings', description='Open the settings panel to customize thinking depth, persona, and load conversation context.')
     async def settings(self, interaction: discord.Interaction):
         """Open the interactive settings menu."""
         settings_key, scope_msg, is_shared = get_settings_key_from_interaction(interaction)
@@ -304,8 +305,8 @@ class Settings(commands.Cog):
         embed.set_footer(text="Use the controls below to adjust settings")
         
         view = SettingsView(settings_key, scope_msg, user_id, interaction.channel)
-        # Bug 9: Thread settings should be public (not ephemeral) so everyone can see
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=not is_shared)
+        # Settings menu is always ephemeral, but changes (thinking, persona, context) send public messages
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     
     @app_commands.command(name='thinking', description='Set the AI thinking level for reasoning depth.')

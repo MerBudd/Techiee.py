@@ -67,6 +67,23 @@ async def on_ready():
     print(f'Techiee logged in as {bot.user}')
 
 
+@bot.event
+async def on_disconnect():
+    """Called when the bot disconnects. Clean up typing tasks."""
+    print("⚠️ Bot disconnecting, cleaning up...")
+    try:
+        from utils.typing import typing_manager
+        # Cancel all active typing tasks
+        for task in list(typing_manager._tasks.values()):
+            task.cancel()
+        typing_manager._tasks.clear()
+        typing_manager._counts.clear()
+        typing_manager._locks.clear()
+        print("✅ Cleanup complete")
+    except Exception as e:
+        print(f"⚠️ Cleanup error: {e}")
+
+
 async def main():
     """Main entry point."""
     async with bot:

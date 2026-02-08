@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from google.genai.types import Part, Content
 
-from config import tracked_channels
+from config import tracked_channels, cooldowns
 from utils.gemini import set_pending_context, tracked_threads
 
 
@@ -17,12 +17,15 @@ class Context(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.command(name='context', description='Load recent channel messages as context for your next messages.')
+    @app_commands.checks.cooldown(1, cooldowns.get("context", 10))
+    @app_commands.command(name='context', description='Load recent messages from this channel as context for Techiee, letting it reference past conversations.')
     @app_commands.describe(
         count='Number of messages to load (1-50, default 10)',
-        lasts_for='Number of your messages this context lasts for (1-20, default 5)'
+        lasts_for='Number of your messages this context lasts for (1-20, default 5)',
+        include_user='Only include messages from this user (optional)',
+        exclude_user='Exclude messages from this user (optional)'
     )
-    async def context(self, interaction: discord.Interaction, count: int = 10, lasts_for: int = 5):
+    async def context(self, interaction: discord.Interaction, count: int = 10, lasts_for: int = 5, include_user: discord.User = None, exclude_user: discord.User = None):
         """Load recent channel messages as temporary context for the next prompts."""
         
         # Validate count
@@ -55,6 +58,14 @@ class Context(commands.Cog):
             async for msg in interaction.channel.history(limit=count * 3):
                 # Skip the command invocation itself (if present)
                 if msg.interaction_metadata and msg.interaction_metadata.id == interaction.id:
+                    continue
+                
+                # Apply include_user filter if specified
+                if include_user and msg.author.id != include_user.id:
+                    continue
+                
+                # Apply exclude_user filter if specified
+                if exclude_user and msg.author.id == exclude_user.id:
                     continue
                 
                 # In tracked channels/threads: skip user's own messages

@@ -47,8 +47,10 @@ class YouTubeProcessor(commands.Cog):
         history_key = get_history_key(message)
         pending_ctx = get_pending_context(history_key)
         if pending_ctx:
-            remaining = decrement_pending_context(history_key)
-            print(f"📚 Using pending context ({len(pending_ctx)} messages) for {message.author.name}, {remaining} uses left")
+            from utils.gemini import get_pending_context_remaining
+            remaining_before = get_pending_context_remaining(history_key)
+            print(f"📚 Using pending context ({len(pending_ctx)} messages) for {message.author.name}, {remaining_before - 1} uses left after this")
+            decrement_pending_context(history_key)
         
         # Get history if enabled (context-aware) and combine with reply chain and pending context
         if max_history > 0:

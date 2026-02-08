@@ -53,6 +53,13 @@ class TypingManager:
                     await task
                 except asyncio.CancelledError:
                     pass
+                
+                # Cleanup stale data to prevent memory leak
+                self._counts.pop(channel.id, None)
+        
+        # Cleanup lock outside the lock context (if count is 0)
+        if self._counts.get(channel.id, 0) == 0:
+            self._locks.pop(channel.id, None)
     
     async def _typing_loop(self, channel: discord.abc.Messageable):
         """Keep sending typing indicator until cancelled.

@@ -236,6 +236,21 @@ def has_pending_context(context_key):
     return context_key in pending_context
 
 
+def get_pending_context_remaining(context_key):
+    """Get remaining uses for pending context without decrementing.
+    
+    Args:
+        context_key: Tuple like (\"dm\", user_id) or (\"tracked\", user_id) etc.
+    
+    Returns:
+        Number of remaining uses, or 0 if no pending context.
+    """
+    ctx = pending_context.get(context_key)
+    if ctx:
+        return ctx.get("remaining_uses", 0)
+    return 0
+
+
 def get_pending_context_channel(context_key):
     """Get the channel ID where bot should auto-respond for this context.
     
@@ -340,8 +355,6 @@ def set_settings(context_id, is_thread, settings):
     if is_thread:
         context_settings[("thread", context_id)] = settings
     else:
-        # Note: This legacy function can't distinguish between DM/tracked/mention
-        # New code should use set_settings_for_context directly
         pass
 
 
@@ -571,7 +584,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             if history:
                 contents = history + [Content(role="user", parts=user_parts)]
             else:
-                contents = user_parts
+                contents = [Content(role="user", parts=user_parts)]
             
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
@@ -592,7 +605,9 @@ async def process_image_attachment(attachment, user_text, settings, history=None
                 Part(text=f"[Image: {attachment.filename}]\n{prompt}")
             ]
             
-            return (convert_latex_to_discord(response.text), history_parts, uploaded_file)
+            # Handle case where response.text is None
+            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            return (convert_latex_to_discord(response_text), history_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -749,7 +764,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             if history:
                 contents = history + [Content(role="user", parts=user_parts)]
             else:
-                contents = user_parts
+                contents = [Content(role="user", parts=user_parts)]
             
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
@@ -770,7 +785,9 @@ async def process_video_attachment(attachment, user_text, settings, history=None
                 Part(text=f"[Video: {attachment.filename}]\n{prompt}")
             ]
             
-            return (convert_latex_to_discord(response.text), history_parts, active_file)
+            # Handle case where response.text is None
+            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            return (convert_latex_to_discord(response_text), history_parts, active_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -949,7 +966,9 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
                 Part(text=f"[File: {attachment.filename}]\n{prompt}")
             ]
             
-            return (convert_latex_to_discord(response.text), history_parts, uploaded_file)
+            # Handle case where response.text is None
+            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            return (convert_latex_to_discord(response_text), history_parts, uploaded_file)
         finally:
             # Clean up temp file
             os.unlink(tmp_path)
@@ -1096,7 +1115,9 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
                 config=config
             )
         )
-        return (convert_latex_to_discord(response.text), user_parts)
+        # Handle case where response.text is None
+        response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+        return (convert_latex_to_discord(response_text), user_parts)
     except Exception as e:
         return ("❌ Exception: " + str(e), None)
 
@@ -1148,7 +1169,9 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
                 config=config
             )
         )
-        return (convert_latex_to_discord(response.text), user_parts)
+        # Handle case where response.text is None
+        response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+        return (convert_latex_to_discord(response_text), user_parts)
     except Exception as e:
         return ("❌ Exception: " + str(e), None)
 
@@ -1173,6 +1196,8 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
         # Add input images first if provided
         if images:
             for img_bytes, mime_type in images:
+                import base64
+                b64_data = base64.b64encode(img_bytes).decode('utf-8')
                 contents.append(Part.from_bytes(data=img_bytes, mime_type=mime_type))
         
         # Add the text prompt

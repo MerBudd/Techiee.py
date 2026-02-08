@@ -48,8 +48,12 @@ generation_config = {
 enable_google_search = False
 
 # --- Discord Settings ---
-# Your Discord User ID, used for the /sync command
-discord_user_id = 622137576836431882
+# Admin Discord User IDs - these users can use /sync and other admin commands
+# Add more IDs to the list to allow multiple admins
+discord_admin_ids = [622137576836431882]
+
+# Backwards compatibility - first admin ID
+discord_user_id = discord_admin_ids[0] if discord_admin_ids else None
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
 tracked_channels = [
@@ -58,6 +62,15 @@ tracked_channels = [
 
 # The maximum amount of messages to be saved in the message history before the oldest message gets deleted, set to 0 to disable message history
 max_history = 30
+
+# --- Command Cooldowns (in seconds) ---
+# Prevents spamming of expensive commands
+cooldowns = {
+    "context": 10,     # /context command
+    "image": 30,       # /image command (expensive API call)
+    "settings": 5,     # /settings command
+    "forget": 5,       # /forget command
+}
 
 # --- Default Prompts ---
 # Default prompt if the message is just a URL, just a PDF file / text file, or just an image and nothing else
