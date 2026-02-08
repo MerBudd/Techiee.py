@@ -137,9 +137,8 @@ tracked_threads = []
 # Keys: ("thread", thread_id), ("dm", user_id), ("tracked", user_id), ("mention", user_id)
 context_settings = {}
 
-# Legacy: kept for backwards compatibility, but now we use context_settings
-user_settings = {}  # Deprecated - use context_settings
-thread_settings = {}  # Deprecated - use context_settings
+# Legacy: removed deprecated user_settings and thread_settings
+# All settings now use context_settings exclusively
 
 # Default settings
 default_settings = {
@@ -339,12 +338,11 @@ def set_settings_for_context(settings_key, settings):
 def set_settings(context_id, is_thread, settings):
     """Set settings for a user or thread (legacy, for backwards compatibility)."""
     if is_thread:
-        thread_settings[context_id] = settings
         context_settings[("thread", context_id)] = settings
     else:
-        user_settings[context_id] = settings
         # Note: This legacy function can't distinguish between DM/tracked/mention
         # New code should use set_settings_for_context directly
+        pass
 
 
 def get_effective_system_instruction(settings, user_display_name=None, user_username=None):
@@ -681,12 +679,14 @@ async def process_image_attachments(attachments, user_text, settings, history=No
             )
             
             history_parts = [Part(text=f"[Images: {', '.join(filenames)}]\n{prompt}")]
-            return (convert_latex_to_discord(response.text), history_parts, uploaded_files)
+            # Handle case where response.text is None
+            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            return (convert_latex_to_discord(response_text), history_parts, uploaded_files)
         finally:
             for tmp_path in temp_paths:
                 try:
                     os.unlink(tmp_path)
-                except:
+                except Exception:
                     pass
                 
     except Exception as e:
@@ -863,12 +863,14 @@ async def process_video_attachments(attachments, user_text, settings, history=No
             )
             
             history_parts = [Part(text=f"[Videos: {', '.join(filenames)}]\n{prompt}")]
-            return (convert_latex_to_discord(response.text), history_parts, uploaded_files)
+            # Handle case where response.text is None
+            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            return (convert_latex_to_discord(response_text), history_parts, uploaded_files)
         finally:
             for tmp_path in temp_paths:
                 try:
                     os.unlink(tmp_path)
-                except:
+                except Exception:
                     pass
                 
     except Exception as e:
@@ -1034,12 +1036,14 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
             )
             
             history_parts = [Part(text=f"[Files: {', '.join(filenames)}]\n{prompt}")]
-            return (convert_latex_to_discord(response.text), history_parts, uploaded_files)
+            # Handle case where response.text is None
+            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            return (convert_latex_to_discord(response_text), history_parts, uploaded_files)
         finally:
             for tmp_path in temp_paths:
                 try:
                     os.unlink(tmp_path)
-                except:
+                except Exception:
                     pass
                 
     except Exception as e:
@@ -1077,7 +1081,7 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
         if history:
             contents = history + [Content(role="user", parts=user_parts)]
         else:
-            contents = Content(role="user", parts=user_parts)
+            contents = [Content(role="user", parts=user_parts)]
         
         config = create_generate_config(
             system_instruction=effective_system_instruction,
@@ -1128,7 +1132,7 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         if history:
             contents = history + [Content(role="user", parts=user_parts)]
         else:
-            contents = prompt  # URL context tool works with string
+            contents = [Content(role="user", parts=user_parts)]
         
         config = create_generate_config(
             system_instruction=effective_system_instruction,
@@ -1169,8 +1173,6 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
         # Add input images first if provided
         if images:
             for img_bytes, mime_type in images:
-                import base64
-                b64_data = base64.b64encode(img_bytes).decode('utf-8')
                 contents.append(Part.from_bytes(data=img_bytes, mime_type=mime_type))
         
         # Add the text prompt

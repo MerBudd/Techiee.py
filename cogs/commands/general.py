@@ -6,7 +6,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from config import help_text, tracked_channels
-from utils.gemini import tracked_threads, message_history, get_history_key
+from utils.gemini import tracked_threads, message_history, get_history_key, pending_context
 
 
 class General(commands.Cog):
@@ -61,7 +61,14 @@ class General(commands.Cog):
         
         if history_key in message_history:
             del message_history[history_key]
+            # Also clear any pending context for this key
+            if history_key in pending_context:
+                del pending_context[history_key]
             await interaction.response.send_message(f"🧼 History cleared for {scope_msg}!")
+        elif history_key in pending_context:
+            # Only pending context exists
+            del pending_context[history_key]
+            await interaction.response.send_message(f"🧼 Pending context cleared for {scope_msg}!")
         else:
             await interaction.response.send_message("📭 No history to clear in this context.")
 
