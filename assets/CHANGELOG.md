@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.1-exp] - 2026-02-09 (Experimental)
+
+### Changed
+- **Command Descriptions**: Refined and shortened slash command descriptions for `/image` and `/context` to comply with Discord's 100-character limit, resolving sync errors.
+- **Typing Indicator Logic**: Optimized `TypingManager` to use non-blocking delayed cleanup outside of locks, the indicator remains active during concurrent message processing. (for the billionth time sigh)
+- **Removed Cooldown**: Removed the cooldown for the `/context` command as it is a lightweight operation.
+
 ## [2.7.0-exp] - 2026-02-08 (Experimental)
 
 ### Added

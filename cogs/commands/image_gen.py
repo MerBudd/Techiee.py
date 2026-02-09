@@ -18,7 +18,7 @@ class ImageGen(commands.Cog):
         self.bot = bot
     
     @app_commands.checks.cooldown(1, cooldowns.get("image", 30))
-    @app_commands.command(name='image', description='Generate new images or edit existing ones using AI. Supports up to 3 input images and custom aspect ratios.')
+    @app_commands.command(name='image', description='Generate or edit images using AI with multiple inputs and aspect ratios.')
     @app_commands.describe(
         prompt='What to generate or how to edit the image(s)',
         image1='First image to edit (optional)',

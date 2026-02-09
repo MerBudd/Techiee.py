@@ -50,7 +50,7 @@ enable_google_search = False
 # --- Discord Settings ---
 # Admin Discord User IDs - these users can use /sync and other admin commands
 # Add more IDs to the list to allow multiple admins
-discord_admin_ids = [622137576836431882]
+discord_admin_ids = [622137576836431882, 446889759403671554, 123456789012345678]
 
 # Backwards compatibility - first admin ID
 discord_user_id = discord_admin_ids[0] if discord_admin_ids else None
@@ -66,10 +66,10 @@ max_history = 30
 # --- Command Cooldowns (in seconds) ---
 # Prevents spamming of expensive commands
 cooldowns = {
-    "context": 10,     # /context command
-    "image": 30,       # /image command (expensive API call)
-    "settings": 5,     # /settings command
-    "forget": 5,       # /forget command
+    "context": 8,     # /context command
+    "image": 20,       # /image command (expensive API call)
+    "settings": 8,     # /settings command
+    "forget": 3,       # /forget command
 }
 
 # --- Default Prompts ---

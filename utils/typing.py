@@ -39,8 +39,7 @@ class TypingManager:
     async def stop_typing(self, channel: discord.abc.Messageable):
         """Decrement typing count, stop if no more active processors.
         
-        Includes a small grace period before cancelling to prevent flicker
-        when multiple messages are being processed in quick succession.
+        Uses a delayed cleanup to prevent flicker when messages overlap.
         
         Args:
             channel: Discord channel to stop typing indicator for
@@ -48,26 +47,27 @@ class TypingManager:
         async with self._locks[channel.id]:
             self._counts[channel.id] = max(0, self._counts[channel.id] - 1)
             
-            # Only stop typing if there are no more active processors
-            if self._counts[channel.id] == 0 and channel.id in self._tasks:
-                # Small grace period to prevent flicker between overlapping messages
-                await asyncio.sleep(0.15)  # 150ms grace period
-                
-                # Re-check count after grace period (another processor may have started)
-                if self._counts.get(channel.id, 0) == 0 and channel.id in self._tasks:
-                    task = self._tasks.pop(channel.id)
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-                    
-                    # Cleanup stale data to prevent memory leak
-                    self._counts.pop(channel.id, None)
+            # If no more processors, schedule delayed cleanup
+            if self._counts[channel.id] == 0:
+                asyncio.create_task(self._delayed_cleanup(channel))
+    
+    async def _delayed_cleanup(self, channel: discord.abc.Messageable):
+        """Clean up typing after a grace period if still idle."""
+        await asyncio.sleep(0.3)  # 300ms grace period
         
-        # Cleanup lock outside the lock context (if count is 0)
-        if self._counts.get(channel.id, 0) == 0:
-            self._locks.pop(channel.id, None)
+        async with self._locks[channel.id]:
+            # Re-check: only stop if still at 0 (no new processors started)
+            if self._counts.get(channel.id, 0) == 0 and channel.id in self._tasks:
+                task = self._tasks.pop(channel.id)
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                
+                # Cleanup stale data
+                self._counts.pop(channel.id, None)
+                self._locks.pop(channel.id, None)
     
     async def _typing_loop(self, channel: discord.abc.Messageable):
         """Keep sending typing indicator until cancelled.

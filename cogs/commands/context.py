@@ -17,8 +17,7 @@ class Context(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.checks.cooldown(1, cooldowns.get("context", 10))
-    @app_commands.command(name='context', description='Load recent messages from this channel as context for Techiee, letting it reference past conversations.')
+    @app_commands.command(name='context', description='Load recent channel messages as context so Techiee can reference them.')
     @app_commands.describe(
         count='Number of messages to load (1-50, default 10)',
         lasts_for='Number of your messages this context lasts for (1-20, default 5)',
