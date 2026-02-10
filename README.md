@@ -18,7 +18,7 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 
 ## Key Features
 
-- **🖼️ Multimodal Support**: Send images, videos, documents, PDFs, or text files, and Techiee will analyze them together.
+- **🖼️ Multimodal Support**: Send text, images, videos, documents, PDFs, or text files, and Techiee will analyze them together. Includes support for emojis, stickers and GIFs as well.
 - **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
 - **🧠 Advanced Reasoning**: Use the `/thinking` command or the `/settings` UI to adjust the AI's reasoning depth.
 - **🎭 Persistent Personas**: Set a custom personality with `/persona` or via `/settings` that stays active even after history resets.
@@ -47,6 +47,7 @@ You can tweak all bot settings, including safety filters, model parameters, and 
 - `/settings`: Interactive menu to view and adjust AI settings (thinking, persona, and context loading with custom options).
 - `/conversation-summary`: Generates an AI summary of your conversation history.
 - `/forget`: Clears your message history with Techiee for the current context.
+- `/reset-settings`: Resets all AI settings (persona, thinking level, and loaded context) to their default values.
 - `/image`: Generates or edits images with support for multiple inputs and aspect ratios, using Nano Banana (requires paid API key).
 - `/sync`: Syncs slash commands globally (Admin only).
 

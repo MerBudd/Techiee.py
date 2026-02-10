@@ -66,10 +66,10 @@ max_history = 30
 # --- Command Cooldowns (in seconds) ---
 # Prevents spamming of expensive commands
 cooldowns = {
-    "context": 8,     # /context command
+    "context": 7,     # /context command
     "image": 20,       # /image command (expensive API call)
     "settings": 8,     # /settings command
-    "forget": 3,       # /forget command
+    "forget": 4,       # /forget command
 }
 
 # --- Default Prompts ---
@@ -106,6 +106,7 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 * `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
 * `/context [count] [lasts_for] [include_user] [exclude_user]` - Load recent messages from this channel as context, letting me reference past conversations
 * `/forget` - Clear your conversation history with me in the current context (DM, thread, or channel)
+* `/reset-settings` - Reset all AI settings (persona, thinking level, context) to defaults
 * `/sync` - Sync slash commands globally (admin only)
 
 -# *Note:* I'm still under development, so I might not always get things right."""
@@ -164,6 +165,7 @@ You have the following commands:
 - /image: Generates or edits images (requires a paid API key).
 - /context: Loads recent channel messages as context for the next message.
 - /forget: Clears your message history for the current context.
+- /reset-settings: Resets all AI settings (persona, thinking level, context) to defaults.
 
 Note: Image generation (/image command) and Google Search grounding features require a paid Gemini API key. If using a free API key, these features will not be available.
 

@@ -83,6 +83,29 @@ def is_rate_limit_error(error):
     return "429" in error_str and ("RESOURCE_EXHAUSTED" in error_str or "rate" in error_str.lower() or "quota" in error_str.lower())
 
 
+def is_free_tier_error(error):
+    """Check if a 429 error is specifically a free-tier limitation (not a normal rate limit).
+    
+    Free tier errors for paid-only models/features typically contain keywords like
+    'free tier', 'billing', 'paid', or mention the specific model isn't available.
+    """
+    error_str = str(error).lower()
+    if "429" not in str(error):
+        return False
+    free_tier_indicators = [
+        "free tier",
+        "free of charge",
+        "billing",
+        "paid tier",
+        "paid api",
+        "enable billing",
+        "upgrade",
+        "not available for",
+        "not supported for",
+    ]
+    return any(indicator in error_str for indicator in free_tier_indicators)
+
+
 async def execute_with_retry(func, *args, **kwargs):
     """Execute a function with automatic API key rotation on 429 errors.
     
@@ -1217,14 +1240,40 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
         
         config = GenerateContentConfig(**config_kwargs)
         
-        # Use execute_with_retry for automatic key rotation on 429 errors
-        response = await execute_with_retry(
-            lambda: api_key_manager.client.models.generate_content(
-                model=image_model,
-                contents=contents,
-                config=config
-            )
-        )
+        # Track keys tried manually for image generation (to detect free-tier errors)
+        keys_tried = 0
+        total_keys = len(api_key_manager.api_keys)
+        last_error = None
+        
+        while keys_tried < total_keys:
+            try:
+                response = await asyncio.to_thread(
+                    lambda: api_key_manager.client.models.generate_content(
+                        model=image_model,
+                        contents=contents,
+                        config=config
+                    )
+                )
+                break  # Success
+            except Exception as e:
+                if is_free_tier_error(e):
+                    # This key is free-tier, try next key
+                    keys_tried += 1
+                    last_error = e
+                    if keys_tried < total_keys and api_key_manager.rotate_key():
+                        continue
+                    # All keys are free-tier
+                    return ("❌ Image generation requires a **paid Gemini API key**. All your configured API keys appear to be free-tier keys.\n\n"
+                            "💡 To use `/image`, upgrade at least one of your API keys to a paid tier at [Google AI Studio](https://aistudio.google.com/).", None, None)
+                elif is_rate_limit_error(e):
+                    # Normal rate limit, try next key
+                    keys_tried += 1
+                    last_error = e
+                    if keys_tried < total_keys and api_key_manager.rotate_key():
+                        continue
+                    raise Exception(f"All {total_keys} API key(s) have been rate limited. Please wait and try again later.")
+                else:
+                    raise e
         
         # Extract text and image from response
         text_response = None

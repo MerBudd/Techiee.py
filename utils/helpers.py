@@ -157,10 +157,25 @@ async def split_and_send_messages(message, text, max_length, user_id=None):
 
 
 def clean_discord_message(input_string):
-    """Clean Discord message of any <@!123456789> tags."""
-    bracket_pattern = re.compile(r'<[^>]+>')
-    cleaned_content = bracket_pattern.sub('', input_string)
-    return cleaned_content.strip()
+    """Clean Discord message, preserving emojis while removing user/role/channel mentions.
+    
+    - Custom emojis <:name:id> → [Emoji: name]
+    - Animated emojis <a:name:id> → [Animated Emoji: name]
+    - User mentions <@id> or <@!id> → removed
+    - Role mentions <@&id> → removed
+    - Channel mentions <#id> → removed
+    - Timestamps <t:...> → removed
+    - Unicode emojis are left untouched (they're not wrapped in <>)
+    """
+    # Preserve custom emojis (static and animated) before stripping other tags
+    # Animated: <a:name:id> → [Animated Emoji: name]
+    cleaned = re.sub(r'<a:(\w+):\d+>', r'[Animated Emoji: \1]', input_string)
+    # Static: <:name:id> → [Emoji: name]
+    cleaned = re.sub(r'<:(\w+):\d+>', r'[Emoji: \1]', cleaned)
+    
+    # Remove user mentions, role mentions, channel mentions, and timestamps
+    cleaned = re.compile(r'<[^>]+>').sub('', cleaned)
+    return cleaned.strip()
 
 
 def extract_url(string):

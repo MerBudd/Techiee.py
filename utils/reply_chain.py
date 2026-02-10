@@ -62,6 +62,7 @@ async def format_message_for_context(message: discord.Message) -> Content:
     """Format a Discord message as a Gemini Content object.
     
     Downloads and includes actual image attachments so Gemini can see them.
+    Also extracts stickers, GIFs, and embed content.
     
     Args:
         message: The Discord message to format
@@ -89,6 +90,9 @@ async def format_message_for_context(message: discord.Message) -> Content:
         if message.attachments:
             attachment_info = ", ".join([f"[Sent attachment: {a.filename}]" for a in message.attachments])
             parts.append(Part(text=attachment_info))
+        
+        # Include embed content for bot messages too
+        _add_embed_parts(message, parts)
         
         return Content(role="model", parts=parts)
     else:
@@ -118,7 +122,58 @@ async def format_message_for_context(message: discord.Message) -> Content:
                         # Non-image attachments: just note the filename
                         parts.append(Part(text=f"[Attachment: {attachment.filename}]"))
         
+        # Stickers
+        _add_sticker_parts(message, parts)
+        
+        # GIFs and embeds
+        _add_embed_parts(message, parts)
+        
         return Content(role="user", parts=parts)
+
+
+def _add_sticker_parts(message: discord.Message, parts: list):
+    """Extract sticker info from a message and add as text parts."""
+    from google.genai.types import Part
+    
+    if message.stickers:
+        for sticker in message.stickers:
+            sticker_text = f"[Sticker: {sticker.name}]"
+            if hasattr(sticker, 'url') and sticker.url:
+                sticker_text += f" (URL: {sticker.url})"
+            parts.append(Part(text=sticker_text))
+
+
+def _add_embed_parts(message: discord.Message, parts: list):
+    """Extract embed content (rich embeds, GIFs, etc.) from a message and add as text parts."""
+    from google.genai.types import Part
+    
+    if message.embeds:
+        for embed in message.embeds:
+            # Check for GIF embeds (Tenor, Giphy)
+            if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
+                gif_url = embed.url or embed.thumbnail.url if embed.thumbnail else None
+                if gif_url:
+                    parts.append(Part(text=f"[GIF: {gif_url}]"))
+                continue
+            
+            # Rich embeds: extract title, description, fields, footer
+            embed_lines = []
+            if embed.title:
+                embed_lines.append(f"Title: {embed.title}")
+            if embed.author and embed.author.name:
+                embed_lines.append(f"Author: {embed.author.name}")
+            if embed.description:
+                embed_lines.append(f"Description: {embed.description}")
+            if embed.fields:
+                for field in embed.fields:
+                    embed_lines.append(f"{field.name}: {field.value}")
+            if embed.footer and embed.footer.text:
+                embed_lines.append(f"Footer: {embed.footer.text}")
+            if embed.url:
+                embed_lines.append(f"URL: {embed.url}")
+            
+            if embed_lines:
+                parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
 
 
 def format_reply_chain_as_context_text(chain_contents: list) -> str:

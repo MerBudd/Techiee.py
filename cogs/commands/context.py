@@ -4,6 +4,7 @@ Context command cog - Loads channel messages as temporary context.
 import discord
 from discord import app_commands
 from discord.ext import commands
+import aiohttp
 
 from google.genai.types import Part, Content
 
@@ -17,6 +18,7 @@ class Context(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
+    @app_commands.checks.cooldown(1, cooldowns.get("context", 7))
     @app_commands.command(name='context', description='Load recent channel messages as context so Techiee can reference them.')
     @app_commands.describe(
         count='Number of messages to load (1-50, default 10)',
@@ -99,25 +101,68 @@ class Context(commands.Cog):
             # Reverse to get chronological order (oldest first)
             messages.reverse()
             
-            # Convert to Content objects
+            # Convert to Content objects (with full attachment/embed support)
             context_contents = []
             for msg in messages:
                 # Format: "[YYYY-MM-DD HH:MM] DisplayName (@username): message content"
                 timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
                 text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
                 
-                # Handle attachments
-                if msg.attachments:
-                    attachment_names = [att.filename for att in msg.attachments]
-                    text += f" [Attachments: {', '.join(attachment_names)}]"
+                parts = [Part(text=text)]
                 
-                # Handle embeds
+                # Download and include image attachments (like reply chain does)
+                if msg.attachments:
+                    async with aiohttp.ClientSession() as session:
+                        for attachment in msg.attachments:
+                            if attachment.content_type and attachment.content_type.startswith('image/'):
+                                try:
+                                    async with session.get(attachment.url) as resp:
+                                        if resp.status == 200:
+                                            image_bytes = await resp.read()
+                                            parts.append(Part(inline_data={
+                                                "mime_type": attachment.content_type,
+                                                "data": image_bytes
+                                            }))
+                                except Exception:
+                                    parts.append(Part(text=f"[Failed to load image: {attachment.filename}]"))
+                            else:
+                                parts.append(Part(text=f"[Attachment: {attachment.filename}]"))
+                
+                # Include sticker info
+                if msg.stickers:
+                    for sticker in msg.stickers:
+                        sticker_text = f"[Sticker: {sticker.name}]"
+                        if hasattr(sticker, 'url') and sticker.url:
+                            sticker_text += f" (URL: {sticker.url})"
+                        parts.append(Part(text=sticker_text))
+                
+                # Include GIF and embed content
                 if msg.embeds:
-                    embed_count = len(msg.embeds)
-                    text += f" [Embeds: {embed_count}]"
+                    for embed in msg.embeds:
+                        if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
+                            gif_url = embed.url or (embed.thumbnail.url if embed.thumbnail else None)
+                            if gif_url:
+                                parts.append(Part(text=f"[GIF: {gif_url}]"))
+                        else:
+                            embed_lines = []
+                            if embed.title:
+                                embed_lines.append(f"Title: {embed.title}")
+                            if embed.author and embed.author.name:
+                                embed_lines.append(f"Author: {embed.author.name}")
+                            if embed.description:
+                                embed_lines.append(f"Description: {embed.description}")
+                            if embed.fields:
+                                for field in embed.fields:
+                                    embed_lines.append(f"{field.name}: {field.value}")
+                            if embed.footer and embed.footer.text:
+                                embed_lines.append(f"Footer: {embed.footer.text}")
+                            if embed.url:
+                                embed_lines.append(f"URL: {embed.url}")
+                            if embed_lines:
+                                parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
                 
                 # Create as user content (treated as context from others)
-                context_contents.append(Content(role="user", parts=[Part(text=text)]))
+                context_contents.append(Content(role="user", parts=parts))
             
             # Store in pending context
             # Build context_key based on where we are (same logic as history keys)
@@ -152,7 +197,7 @@ class Context(commands.Cog):
             elif channel_id in tracked_channels:
                 scope_msg = f"{interaction.user.mention} in this tracked channel"
             else:
-                scope_msg = f"{interaction.user.mention} via @mentions"
+                scope_msg = f"{interaction.user.mention} for @mentions"
 
             await interaction.followup.send(
                 f"✅ **Context loaded for {interaction.user.mention}!** {len(messages)} message(s){include_note} from this channel are now cached for **{scope_msg}**.\n\n"

@@ -1,11 +1,26 @@
 # Changelog
 
+## [2.8.0-exp] - 2026-02-10 (Experimental)
+
+### Added
+- **Emoji & Sticker Support**: Techiee can now "see" and describe stickers, custom emojis, and animated emojis in messages, including their names and URLs.
+- **GIF & Embed Context**: Techiee now recognizes GIFs from Tenor/Giphy and can see the contents of rich embeds (titles, descriptions, fields, footers) in the conversation history.
+- **Image Free-Tier Detection**: Improved error handling for the `/image` command to specifically detect 429 errors caused by free Gemini API keys, providing a clearer guidance message.
+
+### Changed
+- **Typing Indicator Rewrite**: Completely rewrote the `TypingManager` using Discord's `channel.typing()` context manager.
+- **Context Attachment Parity**: Both the `/context` command and the `/settings` context modal now download and process actual image data, stickers, GIFs, and embeds, matching the high-fidelity context of reply chains.
+- **Settings UI Auto-Respond**: Context loaded via the `/settings` menu now correctly enables "auto-respond" mode in non-tracked channels, matching the behavior of the separate `/context` command.
+- **Interactive Reset**: The "Reset All" button in the `/settings` menu now clears cached context and sends a public confirmation message matching the `/reset-settings` command format.
+- **Mention UI Fixes**: Conversation summaries now use plain-text usernames in the embed footer, as Discord does not render @mentions in footers. Improved wording from "via @mentions" to "for @mentions".
+- **Added `/context` Cooldown**: Implemented the missing cooldown for the `/context` command.
+- **/reset-settings in Help Text** Added the `/reset-settings` command to the help text.
+
 ## [2.7.1-exp] - 2026-02-09 (Experimental)
 
 ### Changed
 - **Command Descriptions**: Refined and shortened slash command descriptions for `/image` and `/context` to comply with Discord's 100-character limit, resolving sync errors.
-- **Typing Indicator Logic**: Optimized `TypingManager` to use non-blocking delayed cleanup outside of locks, the indicator remains active during concurrent message processing. (for the billionth time sigh)
-- **Removed Cooldown**: Removed the cooldown for the `/context` command as it is a lightweight operation.
+- **Typing Indicator Logic**: Optimized typing indicator logic.
 
 ## [2.7.0-exp] - 2026-02-08 (Experimental)
 

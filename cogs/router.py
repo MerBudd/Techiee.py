@@ -60,6 +60,36 @@ class Router(commands.Cog):
             # Start typing indicator with reference counting (handles concurrent messages)
             await typing_manager.start_typing(message.channel)
             try:
+                # Enrich cleaned text with sticker and GIF context
+                enriched_text = cleaned_text
+                
+                # Add sticker info to context
+                if message.stickers:
+                    sticker_info = ", ".join([f"[Sticker: {s.name}]" for s in message.stickers])
+                    enriched_text = f"{enriched_text}\n{sticker_info}" if enriched_text else sticker_info
+                
+                # Add GIF and embed info to context
+                if message.embeds:
+                    for embed in message.embeds:
+                        if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
+                            gif_url = embed.url or (embed.thumbnail.url if embed.thumbnail else None)
+                            if gif_url:
+                                gif_text = f"[GIF: {gif_url}]"
+                                enriched_text = f"{enriched_text}\n{gif_text}" if enriched_text else gif_text
+                        elif embed.title or embed.description:
+                            # Rich embeds: extract key info
+                            embed_parts = []
+                            if embed.title:
+                                embed_parts.append(f"Title: {embed.title}")
+                            if embed.description:
+                                embed_parts.append(f"Description: {embed.description}")
+                            if embed.fields:
+                                for field in embed.fields:
+                                    embed_parts.append(f"{field.name}: {field.value}")
+                            if embed_parts:
+                                embed_text = "[Embed] " + " | ".join(embed_parts) + " [/Embed]"
+                                enriched_text = f"{enriched_text}\n{embed_text}" if enriched_text else embed_text
+                
                 # Check for attachments
                 if message.attachments:
                     # Collect all attachments by type
@@ -76,7 +106,7 @@ class Router(commands.Cog):
                         else:
                             files.append(attachment)
                     
-                    print(f"New Attachment Message FROM: {message.author.name} : {cleaned_text}")
+                    print(f"New Attachment Message FROM: {message.author.name} : {enriched_text}")
                     print(f"  Images: {len(images)}, Videos: {len(videos)}, Files: {len(files)}")
                     
                     # Process by type priority: images > videos > files
@@ -84,41 +114,41 @@ class Router(commands.Cog):
                     if images:
                         image_processor = self.bot.get_cog('ImageProcessor')
                         if image_processor:
-                            await image_processor.process(message, images, cleaned_text, settings, reply_chain_context)
+                            await image_processor.process(message, images, enriched_text, settings, reply_chain_context)
                         return
                     
                     if videos:
                         video_processor = self.bot.get_cog('VideoProcessor')
                         if video_processor:
-                            await video_processor.process(message, videos, cleaned_text, settings, reply_chain_context)
+                            await video_processor.process(message, videos, enriched_text, settings, reply_chain_context)
                         return
                     
                     if files:
                         file_processor = self.bot.get_cog('FileProcessor')
                         if file_processor:
-                            await file_processor.process(message, files, cleaned_text, settings, reply_chain_context)
+                            await file_processor.process(message, files, enriched_text, settings, reply_chain_context)
                         return
                 
-                # Text-only message processing
+                # Text-only message processing (may include sticker/GIF/embed enrichment)
                 else:
                     # Check for URLs
-                    url = extract_url(cleaned_text)
+                    url = extract_url(enriched_text)
                     if url is not None:
                         print(f"Got URL: {url}")
                         if is_youtube_url(url):
                             youtube_processor = self.bot.get_cog('YouTubeProcessor')
                             if youtube_processor:
-                                await youtube_processor.process(message, url, cleaned_text, settings, reply_chain_context)
+                                await youtube_processor.process(message, url, enriched_text, settings, reply_chain_context)
                         else:
                             website_processor = self.bot.get_cog('WebsiteProcessor')
                             if website_processor:
-                                await website_processor.process(message, url, cleaned_text, settings, reply_chain_context)
+                                await website_processor.process(message, url, enriched_text, settings, reply_chain_context)
                         return
                     
-                    # Regular text conversation
+                    # Regular text conversation (includes stickers, GIFs, embeds in enriched_text)
                     text_processor = self.bot.get_cog('TextProcessor')
                     if text_processor:
-                        await text_processor.process(message, cleaned_text, settings, reply_chain_context)
+                        await text_processor.process(message, enriched_text, settings, reply_chain_context)
             finally:
                 # Always stop typing when done (ref-counted, so only stops when all done)
                 await typing_manager.stop_typing(message.channel)

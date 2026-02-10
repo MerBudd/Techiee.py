@@ -41,7 +41,7 @@ def get_settings_key_from_interaction(interaction: discord.Interaction):
         return (("tracked", user_id), f"{user_mention} in this tracked channel", False)
     
     # @mention context
-    return (("mention", user_id), f"{user_mention} via @mentions", False)
+    return (("mention", user_id), f"{user_mention} for @mentions", False)
 
 
 class ThinkingSelect(ui.Select):
@@ -169,43 +169,132 @@ class ContextModal(ui.Modal, title="Load Context"):
             duration = 5
         
         bot = interaction.client
-        user_mention = interaction.user.mention
+        user_id = interaction.user.id
+        channel_id = self.channel.id
         await interaction.response.defer()
         
+        # Determine if this is a tracked context
+        is_tracked = channel_id in tracked_channels or channel_id in tracked_threads
+        is_dm = isinstance(self.channel, discord.DMChannel)
+        
         try:
-            # Fetch messages from channel history
+            # Fetch messages from channel history (matching /context filtering)
             messages = []
             async for msg in self.channel.history(limit=count * 3):
-                if msg.author.id == bot.user.id:
+                # In tracked channels/threads: skip user's own messages
+                if is_tracked and msg.author.id == user_id:
                     continue
+                
+                # Skip bot's messages that are replies to the user
+                if msg.author.id == bot.user.id:
+                    if msg.reference and msg.reference.resolved:
+                        if hasattr(msg.reference.resolved, 'author') and msg.reference.resolved.author.id == user_id:
+                            continue
+                    if interaction.user in msg.mentions:
+                        continue
+                    continue  # Skip all bot messages in context modal
+                
                 messages.append(msg)
                 if len(messages) >= count:
                     break
             
             if not messages:
-                await interaction.channel.send(f"❌ No messages found to load as context for {user_mention}.")
+                filter_note = " (your messages and my replies to you are excluded)" if is_tracked else " (my replies to you are excluded)"
+                await interaction.channel.send(f"❌ No messages found to load as context{filter_note}.")
                 return
             
             messages.reverse()
             
+            import aiohttp
             from google.genai.types import Part, Content
             context_contents = []
             for msg in messages:
                 timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
                 text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
+                parts = [Part(text=text)]
+                
+                # Download and include image attachments
                 if msg.attachments:
-                    attachment_names = [att.filename for att in msg.attachments]
-                    text += f" [Attachments: {', '.join(attachment_names)}]"
-                context_contents.append(Content(role="user", parts=[Part(text=text)]))
+                    async with aiohttp.ClientSession() as session:
+                        for attachment in msg.attachments:
+                            if attachment.content_type and attachment.content_type.startswith('image/'):
+                                try:
+                                    async with session.get(attachment.url) as resp:
+                                        if resp.status == 200:
+                                            image_bytes = await resp.read()
+                                            parts.append(Part(inline_data={
+                                                "mime_type": attachment.content_type,
+                                                "data": image_bytes
+                                            }))
+                                except Exception:
+                                    parts.append(Part(text=f"[Failed to load image: {attachment.filename}]"))
+                            else:
+                                parts.append(Part(text=f"[Attachment: {attachment.filename}]"))
+                
+                # Include sticker info
+                if msg.stickers:
+                    for sticker in msg.stickers:
+                        sticker_text = f"[Sticker: {sticker.name}]"
+                        if hasattr(sticker, 'url') and sticker.url:
+                            sticker_text += f" (URL: {sticker.url})"
+                        parts.append(Part(text=sticker_text))
+                
+                # Include GIF and embed content
+                if msg.embeds:
+                    for embed in msg.embeds:
+                        if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
+                            gif_url = embed.url or (embed.thumbnail.url if embed.thumbnail else None)
+                            if gif_url:
+                                parts.append(Part(text=f"[GIF: {gif_url}]"))
+                        else:
+                            embed_lines = []
+                            if embed.title:
+                                embed_lines.append(f"Title: {embed.title}")
+                            if embed.author and embed.author.name:
+                                embed_lines.append(f"Author: {embed.author.name}")
+                            if embed.description:
+                                embed_lines.append(f"Description: {embed.description}")
+                            if embed.fields:
+                                for field in embed.fields:
+                                    embed_lines.append(f"{field.name}: {field.value}")
+                            if embed.footer and embed.footer.text:
+                                embed_lines.append(f"Footer: {embed.footer.text}")
+                            if embed.url:
+                                embed_lines.append(f"URL: {embed.url}")
+                            if embed_lines:
+                                parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
+                
+                context_contents.append(Content(role="user", parts=parts))
             
-            set_pending_context(self.context_key, context_contents, remaining_uses=duration, listen_channel_id=None)
+            # Set listen_channel_id for auto-respond in non-tracked channels (matching /context)
+            listen_channel = None if (is_tracked or is_dm) else channel_id
+            set_pending_context(self.context_key, context_contents, remaining_uses=duration, listen_channel_id=listen_channel)
             
-            # Always send public message with user mention
+            # Build response message matching /context format
+            include_note = ""
+            if not is_tracked:
+                include_note = " (including your own)"
+            
+            # Determine scope message
+            if channel_id in tracked_threads:
+                scope_msg = "this thread"
+            elif is_dm:
+                scope_msg = "your DMs"
+            elif channel_id in tracked_channels:
+                scope_msg = f"{interaction.user.mention} in this tracked channel"
+            else:
+                scope_msg = f"{interaction.user.mention} for @mentions"
+            
+            auto_respond_note = ""
+            if listen_channel:
+                auto_respond_note = "\n🎯 **I'll respond to your next messages here without needing @mention!**"
+            
             await interaction.channel.send(
-                f"✅ Loaded {len(messages)} messages as context for {user_mention}. Will persist for your next {duration} messages."
+                f"✅ **Context loaded for {interaction.user.mention}!** {len(messages)} message(s){include_note} from this channel are now cached for **{scope_msg}**.\n\n"
+                f"📝 **Send your prompts** - the context will be used for your next **{duration}** message(s).{auto_respond_note}"
             )
         except Exception as e:
-            await interaction.channel.send(f"❌ Error loading context for {user_mention}: {str(e)}")
+            await interaction.channel.send(f"❌ Error loading context: {str(e)}")
 
 
 class ContextButton(ui.Button):
@@ -231,15 +320,21 @@ class ResetButton(ui.Button):
         self.scope_msg = scope_msg
     
     async def callback(self, interaction: discord.Interaction):
+        # Reset settings to defaults
         set_settings_for_context(self.settings_key, default_settings.copy())
-        await interaction.response.edit_message(
-            content=f"✅ All settings reset to default for {self.scope_msg}.",
-            view=SettingsView(self.settings_key, self.scope_msg, interaction.user.id, interaction.channel)
-        )
         
-        # Broadcast change if in tracked channel or thread
-        if interaction.channel.id in tracked_channels or interaction.channel.id in tracked_threads:
-            await interaction.channel.send(f"✅ All settings reset to default for {self.scope_msg}.")
+        # Clear any pending context (matching /reset-settings behavior)
+        if self.settings_key in pending_context:
+            del pending_context[self.settings_key]
+        
+        # Acknowledge silently and send a new public message (matching /reset-settings)
+        await interaction.response.defer()
+        await interaction.channel.send(
+            f"🔄 All settings reset to default for {self.scope_msg}.\n"
+            f"• Thinking level: minimal\n"
+            f"• Persona: default\n"
+            f"• Loaded context: cleared"
+        )
 
 
 class SettingsView(ui.View):
@@ -432,7 +527,9 @@ Conversation to summarize:
             description=summary[:4000] if len(summary) > 4000 else summary,
             color=discord.Color.green()
         )
-        embed.set_footer(text=f"Context: {scope_msg} • {len(history)} messages analyzed")
+        # Use plain-text for footer (Discord doesn't render mentions in embed footers)
+        footer_scope = scope_msg.replace(interaction.user.mention, f"@{interaction.user.name}")
+        embed.set_footer(text=f"Context: {footer_scope} • {len(history)} messages analyzed")
         
         await interaction.followup.send(embed=embed)
 
