@@ -18,37 +18,37 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 
 ## Key Features
 
-- **🖼️ Multimodal Support**: Send text, images, videos, documents, PDFs, or text files, and Techiee will analyze them together. Includes support for emojis, stickers and GIFs as well.
-- **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss the content.
-- **🧠 Advanced Reasoning**: Use the `/thinking` command or the `/settings` UI to adjust the AI's reasoning depth.
-- **🎭 Persistent Personas**: Set a custom personality with `/persona` or via `/settings` that stays active even after history resets.
-- **🌍 Chat everywhere**: Techiee will respond to messages in DMs, tracked channels (see `SETUP.md` and `config.py`), threads created with /createthread, and wherever you @mention Techiee.
+- **🖼️ Multimodal Support**: Send text, images, videos, documents, PDFs, or text files, and Techiee will analyze them together.
+- **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss their contents.
+- **🧠 Reasoning Modes**: Use the `/thinking` command or the `/settings` UI to adjust the AI's reasoning depth.
+- **🎭 Persistent Personas**: Set a custom personality with `/persona` or via `/settings` that stays active even after history resets. Go back to default by running `/persona` or `/persona default`.
+- **🌍 Chat everywhere**: Techiee will respond to messages in DMs, wherever you @mention Techiee, threads created with /createthread, and tracked channels (see `SETUP.md` and `config.py`).
 - **🗑️ Interactive Actions**: React with 🗑️ to delete a response or 🔄 to regenerate it (Author only).
-- **💬 Memory**: Maintains per-user history (different in each context - DMs, different threads, etc.) for natural conversations.
-- **📚 Context Loading**: Use `/context` or the Add context button in `/settings` to add context from other users' messages. Or, reply to a message and Techiee will add the reply chain to its context.
-- **📝 Conversation Summary**: Generate a concise AI summary of your chat history with `/conversation-summary`.
+- **💬 Memory**: Maintains per-user history for natural conversations.
+- **📚 Context Loading**: Use `/context` or the Load Context button in `/settings` to add other users' messages to your history. Or, reply to a message and Techiee will add the reply chain to its context.
 - **🎨 Image Generation**: Generate or edit images with `/image`, using Nano Banana (requires paid API key).
-- **🔍 Google Search Grounding**: Support for real-time web search (requires paid plan, disabled by default).
+- **🔍 Google Search Grounding**: Support for real-time web search (requires paid API key, disabled by default).
 
 >[!NOTE]
-> Settings (thinking, persona) and Context are isolated to prevent "slipping" between different conversations. In shared spaces like threads created with `/createthread`, settings apply to everyone. In DMs and tracked channels, they are private to you.
+> Settings (thinking level, persona), context and message history are isolated (in each context - DMs, different threads, etc.) to prevent "slipping" between different conversations.
+> In threads created with `/createthread`, settings apply to everyone. In DMs, tracked channels and when you @mention Techiee, they only apply to you.
 
 ## Configuration
 
-You can tweak all bot settings, including safety filters, model parameters, and tracked channels, inside the [config.py](config.py) file.
+You can tweak all bot settings, including safety filters, model parameters, help text, system prompt and tracked channels, inside the [config.py](config.py) file.
 
 ## Commands
 
 - `/help`: Shows available commands and bot information.
-- `/createthread <name>`: Starts a new thread where Techiee will respond to every message.
 - `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
-- `/persona <description>`: Sets a custom personality. Use `/persona default` to reset.
-- `/context <count> [lasts_for] [include_user] [exclude_user]`: Loads channel messages as context with optional author filters. In non-tracked channels, Techiee will auto-respond without needing @mention.
-- `/settings`: Interactive menu to view and adjust AI settings (thinking, persona, and context loading with custom options).
-- `/conversation-summary`: Generates an AI summary of your conversation history.
+- `/context <count> [lasts_for] [include_user] [exclude_user]`: Loads channel messages as context with optional filters. After adding context in non-tracked channels, Techiee will auto-respond without needing @mention.
+- `/createthread <name>`: Starts a new thread where Techiee will respond to every message.
 - `/forget`: Clears your message history with Techiee for the current context.
+- `/persona <description>`: Sets a custom personality for Techiee. Use `/persona` or `/persona default` to reset.
+- `/settings`: Interactive menu to view and adjust AI settings (thinking, persona, and context loading with custom options).
 - `/reset-settings`: Resets all AI settings (persona, thinking level, and loaded context) to their default values.
 - `/image`: Generates or edits images with support for multiple inputs and aspect ratios, using Nano Banana (requires paid API key).
+- `/conversation-summary`: Generates an AI summary of your conversation history.
 - `/sync`: Syncs slash commands globally (Admin only).
 
 ---
