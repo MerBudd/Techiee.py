@@ -4,6 +4,35 @@ Utility functions for message handling and URL processing.
 import re
 
 
+def extract_custom_emojis(text):
+    """Extract custom emoji info from Discord message text.
+    
+    Parses <:name:id> and <a:name:id> patterns.
+    
+    Returns:
+        List of (name, id, animated) tuples.
+    """
+    if not text:
+        return []
+    pattern = r'<(a?):(\w+):(\d+)>'
+    matches = re.findall(pattern, text)
+    return [(name, emoji_id, animated == 'a') for animated, name, emoji_id in matches]
+
+
+def get_emoji_cdn_url(emoji_id, animated=False):
+    """Get the CDN URL for a custom Discord emoji.
+    
+    Args:
+        emoji_id: The emoji ID string
+        animated: Whether the emoji is animated
+    
+    Returns:
+        CDN URL string
+    """
+    ext = 'gif' if animated else 'png'
+    return f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}?size=128"
+
+
 async def split_and_send_messages(message, text, max_length, user_id=None):
     """Split long messages and send them sequentially, using reply for first message.
     

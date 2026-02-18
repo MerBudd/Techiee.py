@@ -126,8 +126,12 @@ async def execute_with_retry(func, *args, **kwargs):
     
     while keys_tried < total_keys:
         try:
-            # Execute the function
+            # Execute the function with timing
+            import time as _time
+            _api_start = _time.monotonic()
             result = await asyncio.to_thread(func)
+            _api_elapsed = _time.monotonic() - _api_start
+            print(f"⏱️ Gemini API call completed in {_api_elapsed:.2f}s (key: {api_key_manager.get_current_key_info()})")
             return result
         except Exception as e:
             if is_rate_limit_error(e):

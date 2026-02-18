@@ -80,7 +80,9 @@ async def on_disconnect():
             task.cancel()
         typing_manager._tasks.clear()
         typing_manager._counts.clear()
+        typing_manager._stop_events.clear()
         typing_manager._locks.clear()
+        typing_manager._last_keep_alive.clear()
         print("✅ Cleanup complete")
     except Exception as e:
         print(f"⚠️ Cleanup error: {e}")

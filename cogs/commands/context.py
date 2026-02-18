@@ -104,9 +104,9 @@ class Context(commands.Cog):
             # Convert to Content objects (with full attachment/embed support)
             context_contents = []
             for msg in messages:
-                # Format: "[YYYY-MM-DD HH:MM] DisplayName (@username): message content"
+                # Format with clear context labeling (Issue #5)
                 timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
-                text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
+                text = f"[CONTEXT MESSAGE from {msg.author.display_name} (@{msg.author.name}) at {timestamp}]:\n{msg.content}"
                 
                 parts = [Part(text=text)]
                 
@@ -128,38 +128,73 @@ class Context(commands.Cog):
                             else:
                                 parts.append(Part(text=f"[Attachment: {attachment.filename}]"))
                 
-                # Include sticker info
+                # Download sticker images
                 if msg.stickers:
-                    for sticker in msg.stickers:
-                        sticker_text = f"[Sticker: {sticker.name}]"
-                        if hasattr(sticker, 'url') and sticker.url:
-                            sticker_text += f" (URL: {sticker.url})"
-                        parts.append(Part(text=sticker_text))
+                    async with aiohttp.ClientSession() as session:
+                        for sticker in msg.stickers:
+                            sticker_text = f"[Sticker: {sticker.name}]"
+                            if hasattr(sticker, 'url') and sticker.url:
+                                try:
+                                    async with session.get(str(sticker.url)) as resp:
+                                        if resp.status == 200:
+                                            image_bytes = await resp.read()
+                                            content_type = resp.headers.get('Content-Type', 'image/png')
+                                            if 'json' not in content_type and 'lottie' not in content_type:
+                                                parts.append(Part(text=sticker_text))
+                                                parts.append(Part(inline_data={
+                                                    "mime_type": content_type.split(';')[0],
+                                                    "data": image_bytes
+                                                }))
+                                                continue
+                                except Exception:
+                                    pass
+                                sticker_text += f" (URL: {sticker.url})"
+                            parts.append(Part(text=sticker_text))
                 
-                # Include GIF and embed content
+                # Download GIF thumbnails and include embed content
                 if msg.embeds:
-                    for embed in msg.embeds:
-                        if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
-                            gif_url = embed.url or (embed.thumbnail.url if embed.thumbnail else None)
-                            if gif_url:
-                                parts.append(Part(text=f"[GIF: {gif_url}]"))
-                        else:
-                            embed_lines = []
-                            if embed.title:
-                                embed_lines.append(f"Title: {embed.title}")
-                            if embed.author and embed.author.name:
-                                embed_lines.append(f"Author: {embed.author.name}")
-                            if embed.description:
-                                embed_lines.append(f"Description: {embed.description}")
-                            if embed.fields:
-                                for field in embed.fields:
-                                    embed_lines.append(f"{field.name}: {field.value}")
-                            if embed.footer and embed.footer.text:
-                                embed_lines.append(f"Footer: {embed.footer.text}")
-                            if embed.url:
-                                embed_lines.append(f"URL: {embed.url}")
-                            if embed_lines:
-                                parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
+                    async with aiohttp.ClientSession() as session:
+                        for embed in msg.embeds:
+                            if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
+                                gif_url = None
+                                if embed.thumbnail and embed.thumbnail.url:
+                                    gif_url = embed.thumbnail.url
+                                elif embed.url:
+                                    gif_url = embed.url
+                                if gif_url:
+                                    provider = embed.provider.name if embed.provider and embed.provider.name else "unknown"
+                                    try:
+                                        async with session.get(str(gif_url)) as resp:
+                                            if resp.status == 200:
+                                                image_bytes = await resp.read()
+                                                content_type = resp.headers.get('Content-Type', 'image/gif')
+                                                if content_type.startswith('image/') or content_type.startswith('video/'):
+                                                    parts.append(Part(text=f"[GIF from {provider}]"))
+                                                    parts.append(Part(inline_data={
+                                                        "mime_type": content_type.split(';')[0],
+                                                        "data": image_bytes
+                                                    }))
+                                                    continue
+                                    except Exception:
+                                        pass
+                                    parts.append(Part(text=f"[GIF: {gif_url}]"))
+                            else:
+                                embed_lines = []
+                                if embed.title:
+                                    embed_lines.append(f"Title: {embed.title}")
+                                if embed.author and embed.author.name:
+                                    embed_lines.append(f"Author: {embed.author.name}")
+                                if embed.description:
+                                    embed_lines.append(f"Description: {embed.description}")
+                                if embed.fields:
+                                    for field in embed.fields:
+                                        embed_lines.append(f"{field.name}: {field.value}")
+                                if embed.footer and embed.footer.text:
+                                    embed_lines.append(f"Footer: {embed.footer.text}")
+                                if embed.url:
+                                    embed_lines.append(f"URL: {embed.url}")
+                                if embed_lines:
+                                    parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
                 
                 # Create as user content (treated as context from others)
                 context_contents.append(Content(role="user", parts=parts))

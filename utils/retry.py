@@ -6,6 +6,7 @@ import discord
 from discord import ui
 
 from utils.helpers import split_and_send_messages
+from utils.typing import typing_manager
 
 
 def is_503_error(response_text):
@@ -154,6 +155,9 @@ class RetryView(ui.View):
             if self.update_history_callback:
                 await self.update_history_callback(response_text)
             
+            # Stop typing immediately since we're about to send the response
+            await typing_manager.force_stop_immediate(self.original_message.channel)
+            
             # Send the successful response with tracking
             sent_messages = await split_and_send_messages_with_tracking(
                 self.original_message, 
@@ -240,6 +244,9 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
         # Not a 503 error, update history and send normally
         if update_history_callback:
             await update_history_callback(response_text)
+        
+        # Stop typing immediately since we're about to send the response
+        await typing_manager.force_stop_immediate(message.channel)
         
         # Send the response and get the sent message(s)
         sent_messages = await split_and_send_messages_with_tracking(

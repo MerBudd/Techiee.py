@@ -25,7 +25,7 @@ class General(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
     
-    @app_commands.command(name='createthread', description='Create a dedicated thread where Techiee responds to every message.')
+    @app_commands.command(name='create-thread', description='Create a dedicated thread where Techiee responds to every message.')
     async def create_thread(self, interaction: discord.Interaction, name: str):
         # Create a tracked thread for bot conversations.
         try:

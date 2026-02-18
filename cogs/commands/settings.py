@@ -5,7 +5,7 @@ import discord
 from discord import app_commands, ui
 from discord.ext import commands
 
-from config import tracked_channels, max_history, cooldowns
+from config import tracked_channels, max_history, cooldowns, help_text
 from utils.gemini import (
     tracked_threads,
     context_settings,
@@ -210,7 +210,7 @@ class ContextModal(ui.Modal, title="Load Context"):
             context_contents = []
             for msg in messages:
                 timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
-                text = f"[{timestamp}] {msg.author.display_name} (@{msg.author.name}): {msg.content}"
+                text = f"[CONTEXT MESSAGE from {msg.author.display_name} (@{msg.author.name}) at {timestamp}]:\n{msg.content}"
                 parts = [Part(text=text)]
                 
                 # Download and include image attachments
@@ -231,38 +231,73 @@ class ContextModal(ui.Modal, title="Load Context"):
                             else:
                                 parts.append(Part(text=f"[Attachment: {attachment.filename}]"))
                 
-                # Include sticker info
+                # Download sticker images
                 if msg.stickers:
-                    for sticker in msg.stickers:
-                        sticker_text = f"[Sticker: {sticker.name}]"
-                        if hasattr(sticker, 'url') and sticker.url:
-                            sticker_text += f" (URL: {sticker.url})"
-                        parts.append(Part(text=sticker_text))
+                    async with aiohttp.ClientSession() as session:
+                        for sticker in msg.stickers:
+                            sticker_text = f"[Sticker: {sticker.name}]"
+                            if hasattr(sticker, 'url') and sticker.url:
+                                try:
+                                    async with session.get(str(sticker.url)) as resp:
+                                        if resp.status == 200:
+                                            image_bytes = await resp.read()
+                                            content_type = resp.headers.get('Content-Type', 'image/png')
+                                            if 'json' not in content_type and 'lottie' not in content_type:
+                                                parts.append(Part(text=sticker_text))
+                                                parts.append(Part(inline_data={
+                                                    "mime_type": content_type.split(';')[0],
+                                                    "data": image_bytes
+                                                }))
+                                                continue
+                                except Exception:
+                                    pass
+                                sticker_text += f" (URL: {sticker.url})"
+                            parts.append(Part(text=sticker_text))
                 
-                # Include GIF and embed content
+                # Download GIF thumbnails and include embed content
                 if msg.embeds:
-                    for embed in msg.embeds:
-                        if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
-                            gif_url = embed.url or (embed.thumbnail.url if embed.thumbnail else None)
-                            if gif_url:
-                                parts.append(Part(text=f"[GIF: {gif_url}]"))
-                        else:
-                            embed_lines = []
-                            if embed.title:
-                                embed_lines.append(f"Title: {embed.title}")
-                            if embed.author and embed.author.name:
-                                embed_lines.append(f"Author: {embed.author.name}")
-                            if embed.description:
-                                embed_lines.append(f"Description: {embed.description}")
-                            if embed.fields:
-                                for field in embed.fields:
-                                    embed_lines.append(f"{field.name}: {field.value}")
-                            if embed.footer and embed.footer.text:
-                                embed_lines.append(f"Footer: {embed.footer.text}")
-                            if embed.url:
-                                embed_lines.append(f"URL: {embed.url}")
-                            if embed_lines:
-                                parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
+                    async with aiohttp.ClientSession() as session:
+                        for embed in msg.embeds:
+                            if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
+                                gif_url = None
+                                if embed.thumbnail and embed.thumbnail.url:
+                                    gif_url = embed.thumbnail.url
+                                elif embed.url:
+                                    gif_url = embed.url
+                                if gif_url:
+                                    provider = embed.provider.name if embed.provider and embed.provider.name else "unknown"
+                                    try:
+                                        async with session.get(str(gif_url)) as resp:
+                                            if resp.status == 200:
+                                                image_bytes = await resp.read()
+                                                content_type = resp.headers.get('Content-Type', 'image/gif')
+                                                if content_type.startswith('image/') or content_type.startswith('video/'):
+                                                    parts.append(Part(text=f"[GIF from {provider}]"))
+                                                    parts.append(Part(inline_data={
+                                                        "mime_type": content_type.split(';')[0],
+                                                        "data": image_bytes
+                                                    }))
+                                                    continue
+                                    except Exception:
+                                        pass
+                                    parts.append(Part(text=f"[GIF: {gif_url}]"))
+                            else:
+                                embed_lines = []
+                                if embed.title:
+                                    embed_lines.append(f"Title: {embed.title}")
+                                if embed.author and embed.author.name:
+                                    embed_lines.append(f"Author: {embed.author.name}")
+                                if embed.description:
+                                    embed_lines.append(f"Description: {embed.description}")
+                                if embed.fields:
+                                    for field in embed.fields:
+                                        embed_lines.append(f"{field.name}: {field.value}")
+                                if embed.footer and embed.footer.text:
+                                    embed_lines.append(f"Footer: {embed.footer.text}")
+                                if embed.url:
+                                    embed_lines.append(f"URL: {embed.url}")
+                                if embed_lines:
+                                    parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
                 
                 context_contents.append(Content(role="user", parts=parts))
             
@@ -337,6 +372,85 @@ class ResetButton(ui.Button):
         )
 
 
+class HelpButton(ui.Button):
+    """Button to show the help message."""
+    
+    def __init__(self):
+        super().__init__(label="Help", style=discord.ButtonStyle.secondary, emoji="❓", custom_id="help_button")
+    
+    async def callback(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            description=help_text,
+            color=discord.Color.dark_green()
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class CreateThreadModal(ui.Modal, title="Create Thread"):
+    """Modal for entering thread name."""
+    
+    thread_name = ui.TextInput(
+        label="Thread Name",
+        placeholder="Enter a name for the new thread...",
+        min_length=1,
+        max_length=100
+    )
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            thread = await interaction.channel.create_thread(
+                name=self.thread_name.value,
+                type=discord.ChannelType.public_thread
+            )
+            tracked_threads.add(thread.id)
+            await interaction.response.send_message(
+                f"✅ Thread **{self.thread_name.value}** created! Head over to {thread.mention} to start chatting.",
+                ephemeral=True
+            )
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ I don't have permission to create threads here.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Failed to create thread: {e}", ephemeral=True)
+
+
+class CreateThreadButton(ui.Button):
+    """Button to create a new tracked thread."""
+    
+    def __init__(self):
+        super().__init__(label="Create Thread", style=discord.ButtonStyle.secondary, emoji="🧵", custom_id="create_thread_button")
+    
+    async def callback(self, interaction: discord.Interaction):
+        # Can't create threads in DMs
+        if isinstance(interaction.channel, discord.DMChannel):
+            await interaction.response.send_message("❌ Can't create threads in DMs.", ephemeral=True)
+            return
+        modal = CreateThreadModal()
+        await interaction.response.send_modal(modal)
+
+
+class ForgetButton(ui.Button):
+    """Button to clear conversation history for the current context."""
+    
+    def __init__(self, settings_key, scope_msg):
+        super().__init__(label="Forget", style=discord.ButtonStyle.secondary, emoji="🧼", custom_id="forget_button")
+        self.settings_key = settings_key
+        self.scope_msg = scope_msg
+    
+    async def callback(self, interaction: discord.Interaction):
+        cleared = False
+        if self.settings_key in message_history:
+            del message_history[self.settings_key]
+            cleared = True
+        if self.settings_key in pending_context:
+            del pending_context[self.settings_key]
+            cleared = True
+        
+        if cleared:
+            await interaction.response.send_message(f"🧼 History cleared for {self.scope_msg}!", ephemeral=True)
+        else:
+            await interaction.response.send_message("📭 No history to clear in this context.", ephemeral=True)
+
+
 class SettingsView(ui.View):
     """View containing all settings controls."""
     
@@ -349,12 +463,17 @@ class SettingsView(ui.View):
         # Add the thinking dropdown
         self.add_item(ThinkingSelect(current_thinking))
         
-        # Add buttons
+        # Add buttons (row 1: core settings)
         self.add_item(PersonaButton(settings_key, scope_msg))
         # Add context button if we have channel (settings_key serves as context_key)
         if channel:
             has_context = settings_key in pending_context
             self.add_item(ContextButton(settings_key, channel, has_context))
+        
+        # Row 2: utility buttons
+        self.add_item(HelpButton())
+        self.add_item(CreateThreadButton())
+        self.add_item(ForgetButton(settings_key, scope_msg))
         self.add_item(ResetButton(settings_key, scope_msg))
 
 
@@ -527,11 +646,9 @@ Conversation to summarize:
             description=summary[:4000] if len(summary) > 4000 else summary,
             color=discord.Color.green()
         )
-        # Use plain-text for footer (Discord doesn't render mentions in embed footers)
-        footer_scope = scope_msg.replace(interaction.user.mention, f"@{interaction.user.name}")
-        embed.set_footer(text=f"Context: {footer_scope} • {len(history)} messages analyzed")
+        embed.set_footer(text=f"{len(history)} messages analyzed")
         
-        await interaction.followup.send(embed=embed)
+        await interaction.followup.send(content=f"-# Requested by {interaction.user.mention}", embed=embed)
 
 
 

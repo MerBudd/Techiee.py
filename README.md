@@ -22,7 +22,7 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 - **🌐 Web & YouTube Integration**: Paste a website URL or a YouTube link, and Techiee can summarize or discuss their contents.
 - **🧠 Reasoning Modes**: Use the `/thinking` command or the `/settings` UI to adjust the AI's reasoning depth.
 - **🎭 Persistent Personas**: Set a custom personality with `/persona` or via `/settings` that stays active even after history resets. Go back to default by running `/persona` or `/persona default`.
-- **🌍 Chat everywhere**: Techiee will respond to messages in DMs, wherever you @mention Techiee, threads created with /createthread, and tracked channels (see `SETUP.md` and `config.py`).
+- **🌍 Chat everywhere**: Techiee will respond to messages in DMs, wherever you @mention Techiee, threads created with /create-thread, and tracked channels (see `SETUP.md` and `config.py`).
 - **🗑️ Interactive Actions**: React with 🗑️ to delete a response or 🔄 to regenerate it (Author only).
 - **💬 Memory**: Maintains per-user history for natural conversations.
 - **📚 Context Loading**: Use `/context` or the Load Context button in `/settings` to add other users' messages to your history. Or, reply to a message and Techiee will add the reply chain to its context.
@@ -31,7 +31,7 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 
 >[!NOTE]
 > Settings (thinking level, persona), context and message history are isolated (in each context - DMs, different threads, etc.) to prevent "slipping" between different conversations.
-> In threads created with `/createthread`, settings apply to everyone. In DMs, tracked channels and when you @mention Techiee, they only apply to you.
+> In threads created with `/create-thread`, settings apply to everyone. In DMs, tracked channels and when you @mention Techiee, they only apply to you.
 
 ## Configuration
 
@@ -42,7 +42,7 @@ You can tweak all bot settings, including safety filters, model parameters, help
 - `/help`: Shows available commands and bot information.
 - `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
 - `/context <count> [lasts_for] [include_user] [exclude_user]`: Loads channel messages as context with optional filters. After adding context in non-tracked channels, Techiee will auto-respond without needing @mention.
-- `/createthread <name>`: Starts a new thread where Techiee will respond to every message.
+- `/create-thread <name>`: Starts a new thread where Techiee will respond to every message.
 - `/forget`: Clears your message history with Techiee for the current context.
 - `/persona <description>`: Sets a custom personality for Techiee. Use `/persona` or `/persona default` to reset.
 - `/settings`: Interactive menu to view and adjust AI settings (thinking, persona, and context loading with custom options).

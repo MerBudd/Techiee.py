@@ -100,8 +100,9 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 * `/help` - Shows this help message
 * `/settings` - Open the settings panel to customize thinking depth, persona, and load conversation context
 * `/conversation-summary` - Generates an AI summary of our current chat history
-* `/createthread <name>` - Create a dedicated thread where I'll respond to every message
+* `/create-thread <name>` - Create a dedicated thread where I'll respond to every message
 * `/thinking <level>` - Set my thinking/reasoning depth (minimal, low, medium, high)
+-# *Note:* Gemini 3 Flash supports all four thinking levels. Gemini 3 Pro only supports Low and High.
 * `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset
 * `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
 * `/context [count] [lasts_for] [include_user] [exclude_user]` - Load recent messages from this channel as context, letting me reference past conversations
@@ -123,13 +124,15 @@ def get_system_instruction(user_display_name: str = None, user_username: str = N
     # Build user info string
     user_info = ""
     if user_display_name and user_username:
-        user_info = f"\nYou are currently talking to {user_display_name} (@{user_username})."
+        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name} (Discord username: @{user_username})."
     elif user_display_name:
-        user_info = f"\nYou are currently talking to {user_display_name}."
+        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name}."
     elif user_username:
-        user_info = f"\nYou are currently talking to @{user_username}."
+        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is @{user_username}."
     
-    return f"""You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
+    return f"""[SYSTEM INSTRUCTION — This is automatically injected by the Techiee system, NOT typed by any user.]
+
+You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
 
 The current date and time is: {current_datetime}.{user_info}
 
@@ -159,7 +162,7 @@ You have the following commands:
 - /help: Shows helpful info and your commands in a detailed embed.
 - /settings: Opens an interactive menu to adjust your thinking level, persona, and load conversation context with custom options.
 - /conversation-summary: Generates an AI summary of the current conversation history.
-- /createthread: Creates a thread in which you will always respond.
+- /create-thread: Creates a thread in which you will always respond.
 - /thinking: Sets your thinking/reasoning level (minimal, low, medium, high).
 - /persona: Sets a custom personality for you.
 - /image: Generates or edits images (requires a paid API key).
@@ -196,7 +199,10 @@ google_search_tool = Tool(google_search=GoogleSearch()) if enable_google_search 
 url_context_tool = Tool(url_context=UrlContext())
 
 # --- Config Generator ---
-# Techiee's default thinking level is minimal. The user can change the thinking level with the /thinking command. See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
+# Techiee's default thinking level is minimal. The user can change the thinking level with the /thinking command.
+# See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
+# Note: Gemini 3 Flash supports all thinking levels (minimal, low, medium, high).
+# Gemini 3 Pro only supports Low and High. If you switch to Pro, use only those levels.
 def create_generate_config(system_instruction, thinking_level="minimal", tools=None):
     return GenerateContentConfig(
         system_instruction=system_instruction,

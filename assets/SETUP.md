@@ -2,7 +2,7 @@
 
 First, grab your [Google AI Studio API Key](https://aistudio.google.com/app/apikey) and your [Discord Bot Token](https://discord.com/developers/applications), you will need these for later!
 
-You can put channel ID(s) in which Techiee will always check for messages and respond, in [config.py](config.py). Otherwise, pinging Techiee, DMing Techiee or using `/createthread` will also work.
+You can put channel ID(s) in which Techiee will always check for messages and respond, in [config.py](config.py). Otherwise, pinging Techiee, DMing Techiee or using `/create-thread` will also work.
 
 You can also adjust many other settings in [config.py](config.py), such as the models to use, default thinking level, model parameters, safety settings, system prompt, help text, default prompts for different content types, and more. You should put your own Discord user ID (and any other admins) in there. This allows you to use admin-only commands like `/sync`. 
 

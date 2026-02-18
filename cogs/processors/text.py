@@ -26,7 +26,7 @@ class TextProcessor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    async def process(self, message, cleaned_text, settings, reply_chain_context=None):
+    async def process(self, message, cleaned_text, settings, reply_chain_context=None, media_parts=None):
         """Process a text-only message with history support.
         
         Args:
@@ -34,12 +34,15 @@ class TextProcessor(commands.Cog):
             cleaned_text: Cleaned message content
             settings: User/context settings
             reply_chain_context: Optional list of Content objects from reply chain
+            media_parts: Optional list of Part objects (sticker/GIF/emoji images)
         """
         print(f"New Text Message FROM: {message.author.name} : {cleaned_text}")
         
         # Default to empty list if not provided
         if reply_chain_context is None:
             reply_chain_context = []
+        if media_parts is None:
+            media_parts = []
         
         # Get user info for system prompt
         user_display_name = message.author.display_name
@@ -55,10 +58,13 @@ class TextProcessor(commands.Cog):
             decrement_pending_context(history_key)
 
         
+        # Build user content parts: text + any media (sticker/GIF/emoji images)
+        user_parts = [Part(text=cleaned_text)] + media_parts
+        
         # Regular text conversation with history
         if max_history == 0:
             # Even with no history, we can still use pending context and reply chain
-            user_content = create_user_content([Part(text=cleaned_text)])
+            user_content = create_user_content(user_parts)
             contents = reply_chain_context + pending_ctx + [user_content]
             response_text = await generate_response_with_text(contents, settings, user_display_name, user_username)
             
@@ -68,8 +74,8 @@ class TextProcessor(commands.Cog):
             await send_response_with_retry(message, response_text, retry_callback, history_key=history_key)
             return
         
-        # Create user content with text part
-        user_content = create_user_content([Part(text=cleaned_text)])
+        # Create user content with text + media parts
+        user_content = create_user_content(user_parts)
         
         # Get existing history (context-aware) and add new user message
         # Order: history + reply_chain + pending_context + user_message
@@ -84,9 +90,10 @@ class TextProcessor(commands.Cog):
             return await generate_response_with_text(contents, settings, user_display_name, user_username)
         
         # Define history update callback for when response succeeds
-        # Note: We don't add pending_ctx or reply_chain to permanent history, only user's actual message
+        # Store text-only version in history (media is ephemeral context)
         async def update_history(response_text):
-            update_message_history(message, user_content)
+            text_only_content = create_user_content([Part(text=cleaned_text)])
+            update_message_history(message, text_only_content)
             model_content = create_model_content(response_text)
             update_message_history(message, model_content)
         
