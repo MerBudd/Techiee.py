@@ -29,8 +29,15 @@ class Router(commands.Cog):
     
     async def route_message(self, message):
         """Route incoming messages to the appropriate processor cog."""
-        # Ignore messages sent by the bot or if mention everyone is used
-        if message.author == self.bot.user or message.mention_everyone:
+        # If the message is from us, we may need to refresh typing indicators
+        # because Discord clears all typing status when a bot sends a message.
+        if message.author == self.bot.user:
+            from utils.typing import typing_manager
+            await typing_manager.refresh_if_active(message.channel)
+            return
+
+        # Ignore mention everyone
+        if message.mention_everyone:
             return
         
         # Ignore other bots

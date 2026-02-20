@@ -159,6 +159,21 @@ class TypingManager:
         """
         await self.force_stop_immediate(channel)
 
+    async def refresh_if_active(self, channel: discord.abc.Messageable):
+        """Force a typing API call if typing is supposed to be active.
+        
+        Discord clears a bot's typing status instantly when the bot sends any message.
+        If multiple messages are processing concurrently, sending the first one clears
+        typing for the others. This method explicitly sends a new typing request to
+        restore it.
+        """
+        async with self._locks[channel.id]:
+            if self._counts.get(channel.id, 0) > 0 and channel.id in self._tasks:
+                try:
+                    await channel._state.http.send_typing(channel.id)
+                except Exception:
+                    pass
+
 
 # Global instance
 typing_manager = TypingManager()
