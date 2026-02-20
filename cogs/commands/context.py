@@ -157,9 +157,9 @@ class Context(commands.Cog):
                         for embed in msg.embeds:
                             if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
                                 gif_url = None
-                                if embed.thumbnail and embed.thumbnail.url:
-                                    gif_url = embed.thumbnail.url
-                                elif embed.url:
+                                if embed.thumbnail:
+                                    gif_url = getattr(embed.thumbnail, 'proxy_url', None) or getattr(embed.thumbnail, 'url', None)
+                                if not gif_url and embed.url:
                                     gif_url = embed.url
                                 if gif_url:
                                     provider = embed.provider.name if embed.provider and embed.provider.name else "unknown"

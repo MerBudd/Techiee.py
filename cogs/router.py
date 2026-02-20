@@ -96,9 +96,9 @@ class Router(commands.Cog):
                         for embed in message.embeds:
                             if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
                                 gif_url = None
-                                if embed.thumbnail and embed.thumbnail.url:
-                                    gif_url = embed.thumbnail.url
-                                elif embed.url:
+                                if embed.thumbnail:
+                                    gif_url = getattr(embed.thumbnail, 'proxy_url', None) or getattr(embed.thumbnail, 'url', None)
+                                if not gif_url and embed.url:
                                     gif_url = embed.url
                                 if gif_url:
                                     provider_name = embed.provider.name if embed.provider and embed.provider.name else "unknown"
@@ -213,7 +213,7 @@ class Router(commands.Cog):
                 # (Normally, retry.py already stops typing right before sending messages)
                 await typing_manager.force_stop_immediate(message.channel)
                 _total_elapsed = _time.monotonic() - _process_start
-                print(f"⏱️ Total processing time for {message.author.name}: {_total_elapsed:.2f}s")
+                print(f"⏱️ Total processing time for {message.author.name}: {_total_elapsed:.2f}s", flush=True)
 
 
 async def setup(bot):

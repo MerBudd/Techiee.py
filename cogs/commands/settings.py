@@ -260,9 +260,9 @@ class ContextModal(ui.Modal, title="Load Context"):
                         for embed in msg.embeds:
                             if embed.type == "gifv" or (embed.provider and embed.provider.name and embed.provider.name.lower() in ("tenor", "giphy")):
                                 gif_url = None
-                                if embed.thumbnail and embed.thumbnail.url:
-                                    gif_url = embed.thumbnail.url
-                                elif embed.url:
+                                if embed.thumbnail:
+                                    gif_url = getattr(embed.thumbnail, 'proxy_url', None) or getattr(embed.thumbnail, 'url', None)
+                                if not gif_url and embed.url:
                                     gif_url = embed.url
                                 if gif_url:
                                     provider = embed.provider.name if embed.provider and embed.provider.name else "unknown"
@@ -463,16 +463,18 @@ class SettingsView(ui.View):
         # Add the thinking dropdown
         self.add_item(ThinkingSelect(current_thinking))
         
-        # Add buttons (row 1: core settings)
-        self.add_item(PersonaButton(settings_key, scope_msg))
+        # Row 1: Help & Context & Thread
+        self.add_item(HelpButton())
+        
         # Add context button if we have channel (settings_key serves as context_key)
         if channel:
             has_context = settings_key in pending_context
             self.add_item(ContextButton(settings_key, channel, has_context))
-        
-        # Row 2: utility buttons
-        self.add_item(HelpButton())
+            
         self.add_item(CreateThreadButton())
+        
+        # Row 2: Persona & Forget & Reset
+        self.add_item(PersonaButton(settings_key, scope_msg))
         self.add_item(ForgetButton(settings_key, scope_msg))
         self.add_item(ResetButton(settings_key, scope_msg))
 

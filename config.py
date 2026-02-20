@@ -98,16 +98,16 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 ## Commands:
 
 * `/help` - Shows this help message
-* `/settings` - Open the settings panel to customize thinking depth, persona, and load conversation context
-* `/conversation-summary` - Generates an AI summary of our current chat history
-* `/create-thread <name>` - Create a dedicated thread where I'll respond to every message
 * `/thinking <level>` - Set my thinking/reasoning depth (minimal, low, medium, high)
 -# *Note:* Gemini 3 Flash supports all four thinking levels. Gemini 3 Pro only supports Low and High.
-* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset
-* `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
 * `/context [count] [lasts_for] [include_user] [exclude_user]` - Load recent messages from this channel as context, letting me reference past conversations
+* `/create-thread <name>` - Create a dedicated thread where I'll respond to every message
+* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset
 * `/forget` - Clear your conversation history with me in the current context (DM, thread, or channel)
+* `/settings` - Open the settings panel to customize thinking depth, persona, and load conversation context
 * `/reset-settings` - Reset all AI settings (persona, thinking level, context) to defaults
+* `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
+* `/conversation-summary` - Generates an AI summary of our current chat history
 * `/sync` - Sync slash commands globally (admin only)
 
 -# *Note:* I'm still under development, so I might not always get things right."""
@@ -160,15 +160,15 @@ Users can interact with your responses using reactions (Author only):
 
 You have the following commands:
 - /help: Shows helpful info and your commands in a detailed embed.
-- /settings: Opens an interactive menu to adjust your thinking level, persona, and load conversation context with custom options.
-- /conversation-summary: Generates an AI summary of the current conversation history.
-- /create-thread: Creates a thread in which you will always respond.
 - /thinking: Sets your thinking/reasoning level (minimal, low, medium, high).
-- /persona: Sets a custom personality for you.
-- /image: Generates or edits images (requires a paid API key).
 - /context: Loads recent channel messages as context for the next message.
+- /create-thread: Creates a thread in which you will always respond.
+- /persona: Sets a custom personality for you.
 - /forget: Clears your message history for the current context.
+- /settings: Opens an interactive menu to adjust your thinking level, persona, and load conversation context with custom options.
 - /reset-settings: Resets all AI settings (persona, thinking level, context) to defaults.
+- /image: Generates or edits images (requires a paid API key).
+- /conversation-summary: Generates an AI summary of the current conversation history.
 
 Note: Image generation (/image command) and Google Search grounding features require a paid Gemini API key. If using a free API key, these features will not be available.
 

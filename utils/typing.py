@@ -65,19 +65,21 @@ class TypingManager:
                 asyncio.create_task(self._delayed_stop(channel.id))
     
     async def force_stop_immediate(self, channel: discord.abc.Messageable):
-        """Force stop typing immediately for a channel, regardless of ref count.
+        """Force stop typing immediately for this processor.
         
-        Call this right after the final message send to ensure typing stops
-        the instant the response appears in chat. No grace period.
+        Decrements the reference count. If the count reaches 0, stops the
+        typing indicator instantly without a grace period.
         
         Args:
-            channel: Discord channel to force-stop typing for
+            channel: Discord channel to stop typing for
         """
         async with self._locks[channel.id]:
-            self._counts[channel.id] = 0
-            event = self._stop_events.get(channel.id)
-            if event:
-                event.set()
+            self._counts[channel.id] = max(0, self._counts[channel.id] - 1)
+            
+            if self._counts[channel.id] == 0:
+                event = self._stop_events.get(channel.id)
+                if event:
+                    event.set()
     
     async def keep_alive(self, channel: discord.abc.Messageable):
         """Reset the grace timer to prevent typing from stopping prematurely.

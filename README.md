@@ -43,8 +43,8 @@ You can tweak all bot settings, including safety filters, model parameters, help
 - `/thinking <level>`: Sets the AI's reasoning level (minimal, low, medium, high).
 - `/context <count> [lasts_for] [include_user] [exclude_user]`: Loads channel messages as context with optional filters. After adding context in non-tracked channels, Techiee will auto-respond without needing @mention.
 - `/create-thread <name>`: Starts a new thread where Techiee will respond to every message.
-- `/forget`: Clears your message history with Techiee for the current context.
 - `/persona <description>`: Sets a custom personality for Techiee. Use `/persona` or `/persona default` to reset.
+- `/forget`: Clears your message history with Techiee for the current context.
 - `/settings`: Interactive menu to view and adjust AI settings (thinking, persona, and context loading with custom options).
 - `/reset-settings`: Resets all AI settings (persona, thinking level, and loaded context) to their default values.
 - `/image`: Generates or edits images with support for multiple inputs and aspect ratios, using Nano Banana (requires paid API key).
