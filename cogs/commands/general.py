@@ -5,7 +5,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import help_text, tracked_channels, cooldowns
+from config import cooldowns
+from utils.config_manager import dynamic_config
 from utils.gemini import tracked_threads, message_history, get_history_key, pending_context
 
 
@@ -20,7 +21,7 @@ class General(commands.Cog):
         # Display help information using embed (supports up to 4096 chars)
         embed = discord.Embed(
             title="<:techiee:1465670132050300960> Techiee Help",
-            description=help_text[help_text.find("Hey there!"):],  # Skip the header
+            description=dynamic_config.help_text[dynamic_config.help_text.find("Hey there!"):],  # Skip the header
             color=discord.Color.blue()
         )
         await interaction.response.send_message(embed=embed)
@@ -52,7 +53,7 @@ class General(commands.Cog):
             history_key = ("dm", user_id)
             scope_msg = "your DMs"
         # Tracked channel context
-        elif channel_id in tracked_channels:
+        elif channel_id in dynamic_config.tracked_channels:
             history_key = ("tracked", user_id)
             scope_msg = f"{interaction.user.mention} in this channel"
         else:

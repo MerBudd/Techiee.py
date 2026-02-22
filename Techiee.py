@@ -46,6 +46,7 @@ COGS = [
     "cogs.reactions",
     # Commands
     "cogs.commands.admin",
+    "cogs.commands.admin_config",
     "cogs.commands.general",
     "cogs.commands.settings",
     "cogs.commands.image_gen",

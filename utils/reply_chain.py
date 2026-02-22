@@ -187,11 +187,24 @@ async def _add_embed_parts(message: discord.Message, parts: list):
                                     image_bytes = await resp.read()
                                     content_type = resp.headers.get('Content-Type', 'image/gif')
                                     if content_type.startswith('image/') or content_type.startswith('video/'):
-                                        parts.append(Part(text=f"[GIF from {embed.provider.name if embed.provider and embed.provider.name else 'unknown'}]"))
-                                        parts.append(Part(inline_data={
-                                            "mime_type": content_type.split(';')[0],
-                                            "data": image_bytes
-                                        }))
+                                        import tempfile, os
+                                        from utils.gemini import api_key_manager, execute_with_retry
+                                        ext = '.gif' if content_type.startswith('image/gif') else '.mp4'
+                                        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
+                                            tmp_file.write(image_bytes)
+                                            tmp_path = tmp_file.name
+                                            
+                                        try:
+                                            uploaded_file = await execute_with_retry(
+                                                lambda path=tmp_path: api_key_manager.client.files.upload(file=path)
+                                            )
+                                            parts.append(Part(text=f"[GIF from {embed.provider.name if embed.provider and embed.provider.name else 'unknown'}]"))
+                                            parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
+                                        finally:
+                                            try:
+                                                os.unlink(tmp_path)
+                                            except Exception:
+                                                pass
                                         continue
                         except Exception:
                             pass

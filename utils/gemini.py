@@ -15,20 +15,12 @@ from google.genai.types import Part, Content
 from config import (
     gemini_api_key,
     gemini_api_keys,
-    gemini_model,
-    image_model,
     get_system_instruction,
-    default_image_prompt,
-    default_pdf_and_txt_prompt,
-    default_url_prompt,
-    default_aspect_ratio,
     url_context_tool,
-    google_search_tool,
-    safety_settings,
+    get_google_search_tool,
     create_generate_config,
-    tracked_channels,
-    max_history,
 )
+from utils.config_manager import dynamic_config
 
 
 # --- API Key Rotation Manager ---
@@ -352,7 +344,7 @@ def get_settings_key(message):
         return ("dm", message.author.id)
     
     # Tracked channel: use user_id with tracked prefix
-    if message.channel.id in tracked_channels:
+    if message.channel.id in dynamic_config.tracked_channels:
         return ("tracked", message.author.id)
     
     # @mention elsewhere: use user_id with mention prefix
@@ -455,7 +447,7 @@ def get_history_key(message):
         return ("dm", message.author.id)
     
     # Tracked channel: use user_id
-    if message.channel.id in tracked_channels:
+    if message.channel.id in dynamic_config.tracked_channels:
         return ("tracked", message.author.id)
     
     # @mention elsewhere: global per-user history (shared across all non-tracked channels)
@@ -476,7 +468,7 @@ def update_message_history(message, content):
     
     if history_key in message_history:
         message_history[history_key].append(content)
-        if len(message_history[history_key]) > max_history:
+        if len(message_history[history_key]) > dynamic_config.max_history:
             message_history[history_key].pop(0)
     else:
         message_history[history_key] = [content]
@@ -542,13 +534,13 @@ async def generate_response_with_text(contents, settings, user_display_name=None
         config = create_generate_config(
             system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
-            tools=[google_search_tool] if google_search_tool else None,
+            tools=[get_google_search_tool()] if get_google_search_tool() else None,
         )
         
         # Use execute_with_retry for automatic key rotation on 429 errors
         response = await execute_with_retry(
             lambda: api_key_manager.client.models.generate_content(
-                model=gemini_model,
+                model=dynamic_config.gemini_model,
                 contents=contents,
                 config=config
             )
@@ -599,7 +591,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
                 lambda: api_key_manager.client.files.upload(file=tmp_path)
             )
             
-            prompt = user_text if user_text else default_image_prompt
+            prompt = user_text if user_text else dynamic_config.default_image_prompt
             
             # Build user content parts for this message (with actual file for current request)
             user_parts = [
@@ -621,7 +613,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             # Use execute_with_retry for automatic key rotation on 429 errors
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=gemini_model,
+                    model=dynamic_config.gemini_model,
                     contents=contents,
                     config=config
                 )
@@ -694,7 +686,7 @@ async def process_image_attachments(attachments, user_text, settings, history=No
             return ("❌ Unable to download any of the images.", None, None)
         
         try:
-            prompt = user_text if user_text else default_image_prompt
+            prompt = user_text if user_text else dynamic_config.default_image_prompt
             
             # Build user content parts with all images
             user_parts = []
@@ -714,7 +706,7 @@ async def process_image_attachments(attachments, user_text, settings, history=No
             
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=gemini_model,
+                    model=dynamic_config.gemini_model,
                     contents=contents,
                     config=config
                 )
@@ -801,7 +793,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             # Use execute_with_retry for automatic key rotation on 429 errors
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=gemini_model,
+                    model=dynamic_config.gemini_model,
                     contents=contents,
                     config=config
                 )
@@ -900,7 +892,7 @@ async def process_video_attachments(attachments, user_text, settings, history=No
             
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=gemini_model,
+                    model=dynamic_config.gemini_model,
                     contents=contents,
                     config=config
                 )
@@ -960,7 +952,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
                 lambda: api_key_manager.client.files.upload(file=tmp_path)
             )
             
-            prompt = user_text if user_text else default_pdf_and_txt_prompt
+            prompt = user_text if user_text else dynamic_config.default_pdf_and_txt_prompt
             
             # Build user content parts for this message (with actual file for current request)
             user_parts = [
@@ -982,7 +974,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
             # Use execute_with_retry for automatic key rotation on 429 errors
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=gemini_model,
+                    model=dynamic_config.gemini_model,
                     contents=contents,
                     config=config
                 )
@@ -1055,7 +1047,7 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
             return ("❌ Unable to download any of the files.", None, None)
         
         try:
-            prompt = user_text if user_text else default_pdf_and_txt_prompt
+            prompt = user_text if user_text else dynamic_config.default_pdf_and_txt_prompt
             
             # Build user content parts with all files
             user_parts = []
@@ -1075,7 +1067,7 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
             
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=gemini_model,
+                    model=dynamic_config.gemini_model,
                     contents=contents,
                     config=config
                 )
@@ -1115,7 +1107,7 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
         effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
-        prompt = user_text.replace(url, "").strip() if user_text else default_url_prompt
+        prompt = user_text.replace(url, "").strip() if user_text else dynamic_config.default_url_prompt
         
         # Build user content parts for this message
         user_parts = [
@@ -1167,7 +1159,7 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
-        prompt = user_text if user_text else f"{default_url_prompt} {url}"
+        prompt = user_text if user_text else f"{dynamic_config.default_url_prompt} {url}"
         
         # If user provided custom text, make sure the URL is included
         if user_text and url not in user_text:
@@ -1239,8 +1231,8 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
         # Add aspect ratio if specified
         if aspect_ratio:
             config_kwargs["image_config"] = ImageConfig(aspect_ratio=aspect_ratio)
-        elif default_aspect_ratio:
-            config_kwargs["image_config"] = ImageConfig(aspect_ratio=default_aspect_ratio)
+        elif dynamic_config.default_aspect_ratio:
+            config_kwargs["image_config"] = ImageConfig(aspect_ratio=dynamic_config.default_aspect_ratio)
         
         config = GenerateContentConfig(**config_kwargs)
         
@@ -1253,7 +1245,7 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
             try:
                 response = await asyncio.to_thread(
                     lambda: api_key_manager.client.models.generate_content(
-                        model=image_model,
+                        model=dynamic_config.image_model,
                         contents=contents,
                         config=config
                     )

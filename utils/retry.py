@@ -156,7 +156,7 @@ class RetryView(ui.View):
                 await self.update_history_callback(response_text)
             
             # Stop typing immediately since we're about to send the response
-            await typing_manager.force_stop_immediate(self.original_message.channel)
+            await typing_manager.force_stop_immediate(self.original_message.channel, self.original_message.id)
             
             # Send the successful response with tracking
             sent_messages = await split_and_send_messages_with_tracking(
@@ -226,6 +226,9 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
             history_key=history_key
         )
         
+        # Stop typing immediately since we're showing the error and button
+        await typing_manager.force_stop_immediate(message.channel, message.id)
+        
         # Send error message with retry button
         error_msg = await message.reply(
             "❌ The server is overloaded. Please wait and retry.\n\n*A retry button will be available shortly.*",
@@ -246,7 +249,7 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
             await update_history_callback(response_text)
         
         # Stop typing immediately since we're about to send the response
-        await typing_manager.force_stop_immediate(message.channel)
+        await typing_manager.force_stop_immediate(message.channel, message.id)
         
         # Send the response and get the sent message(s)
         sent_messages = await split_and_send_messages_with_tracking(

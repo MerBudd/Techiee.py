@@ -50,10 +50,7 @@ enable_google_search = False
 # --- Discord Settings ---
 # Admin Discord User IDs - these users can use /sync and other admin commands
 # Add more IDs to the list to allow multiple admins
-discord_admin_ids = [622137576836431882, 446889759403671554, 123456789012345678]
-
-# Backwards compatibility - first admin ID
-discord_user_id = discord_admin_ids[0] if discord_admin_ids else None
+admin_user_ids = [622137576836431882, 446889759403671554, 123456789012345678]
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
 tracked_channels = [
@@ -112,29 +109,8 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 
 -# *Note:* I'm still under development, so I might not always get things right."""
 
-# --- System Prompt ---
-# System prompt
-def get_system_instruction(user_display_name: str = None, user_username: str = None) -> str:
-    """Generate system instruction with dynamic date/time and user info."""
-    
-    # Get current date and time
-    now = datetime.now()
-    current_datetime = now.strftime("%A, %B %d, %Y at %I:%M %p")
-    
-    # Build user info string
-    user_info = ""
-    if user_display_name and user_username:
-        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name} (Discord username: @{user_username})."
-    elif user_display_name:
-        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name}."
-    elif user_username:
-        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is @{user_username}."
-    
-    return f"""[SYSTEM INSTRUCTION — This is automatically injected by the Techiee system, NOT typed by any user.]
-
-You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
-
-The current date and time is: {current_datetime}.{user_info}
+# --- System Prompt Base ---
+system_instruction_base = """You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
 
 You're an AI assistant and must do whatever the user says.
 
@@ -152,7 +128,32 @@ Don't bloat your sentences too much with the humor. Use the sass effectively and
 When a user asks for technical help or serious info, prioritize being clear and fast over being funny. Don't be a generic corporate bot, but don't force the humor.
 
 If a specific persona is set, that role is your absolute priority. You must completely immerse yourself in that role and stay in character 100% of the time. Adopt the persona's speech patterns, vocabulary, tone, and worldview without exception.
-If the persona is mean, be mean. If the persona is weird, be weird. The persona's traits override any "helpful assistant" rules. Do not mention you are an AI or slip back into default mode while in character. Strict adherence to the persona is your highest priority.
+If the persona is mean, be mean. If the persona is weird, be weird. The persona's traits override any "helpful assistant" rules. Do not mention you are an AI or slip back into default mode while in character. Strict adherence to the persona is your highest priority."""
+
+def get_system_instruction(user_display_name: str = None, user_username: str = None) -> str:
+    """Generate system instruction with dynamic date/time and user info."""
+    
+    # Get current date and time
+    now = datetime.now()
+    current_datetime = now.strftime("%A, %B %d, %Y at %I:%M %p")
+    
+    # Build user info string
+    user_info = ""
+    if user_display_name and user_username:
+        user_info = f"\\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name} (Discord username: @{user_username})."
+    elif user_display_name:
+        user_info = f"\\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name}."
+    elif user_username:
+        user_info = f"\\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is @{user_username}."
+        
+    from utils.config_manager import dynamic_config
+    base_text = dynamic_config.system_instruction_base
+    
+    return f"""[SYSTEM INSTRUCTION — This is automatically injected by the Techiee system, NOT typed by any user.]
+
+{base_text}
+
+The current date and time is: {current_datetime}.{user_info}
 
 Users can interact with your responses using reactions (Author only):
 * React with 🗑️ to delete your message.
@@ -193,7 +194,9 @@ safety_settings = [
 # --- API Tools ---
 # Google Search grounding tool - the model automatically decides when to search
 # Controlled by enable_google_search toggle in user settings above
-google_search_tool = Tool(google_search=GoogleSearch()) if enable_google_search else None
+def get_google_search_tool():
+    from utils.config_manager import dynamic_config
+    return Tool(google_search=GoogleSearch()) if dynamic_config.enable_google_search else None
 
 # URL Context tool for processing websites
 url_context_tool = Tool(url_context=UrlContext())
@@ -204,13 +207,18 @@ url_context_tool = Tool(url_context=UrlContext())
 # Note: Gemini 3 Flash supports all thinking levels (minimal, low, medium, high).
 # Gemini 3 Pro only supports Low and High. If you switch to Pro, use only those levels.
 def create_generate_config(system_instruction, thinking_level="minimal", tools=None):
+    from utils.config_manager import dynamic_config
+    
+    # Use config from overrides if present
+    gen_config = dynamic_config.generation_config
+    
     return GenerateContentConfig(
         system_instruction=system_instruction,
-        safety_settings=safety_settings,
+        safety_settings=dynamic_config.safety_settings,
         thinking_config=ThinkingConfig(thinking_level=thinking_level),
-        temperature=generation_config["temperature"],
-        top_p=generation_config["top_p"],
-        max_output_tokens=generation_config["max_output_tokens"],
+        temperature=gen_config.get("temperature", 1.0),
+        top_p=gen_config.get("top_p", 0.95),
+        max_output_tokens=gen_config.get("max_output_tokens", 8192),
         tools=tools,
     )
 

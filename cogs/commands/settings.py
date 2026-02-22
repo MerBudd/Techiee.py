@@ -5,7 +5,8 @@ import discord
 from discord import app_commands, ui
 from discord.ext import commands
 
-from config import tracked_channels, max_history, cooldowns, help_text
+from config import cooldowns
+from utils.config_manager import dynamic_config
 from utils.gemini import (
     tracked_threads,
     context_settings,
@@ -37,7 +38,7 @@ def get_settings_key_from_interaction(interaction: discord.Interaction):
         return (("dm", user_id), "your DMs", False)
     
     # Tracked channel context (per-user in tracked channel)
-    if channel_id in tracked_channels:
+    if channel_id in dynamic_config.tracked_channels:
         return (("tracked", user_id), f"{user_mention} in this tracked channel", False)
     
     # @mention context
@@ -174,7 +175,7 @@ class ContextModal(ui.Modal, title="Load Context"):
         await interaction.response.defer()
         
         # Determine if this is a tracked context
-        is_tracked = channel_id in tracked_channels or channel_id in tracked_threads
+        is_tracked = channel_id in dynamic_config.tracked_channels or channel_id in tracked_threads
         is_dm = isinstance(self.channel, discord.DMChannel)
         
         try:
@@ -315,7 +316,7 @@ class ContextModal(ui.Modal, title="Load Context"):
                 scope_msg = "this thread"
             elif is_dm:
                 scope_msg = "your DMs"
-            elif channel_id in tracked_channels:
+            elif channel_id in dynamic_config.tracked_channels:
                 scope_msg = f"{interaction.user.mention} in this tracked channel"
             else:
                 scope_msg = f"{interaction.user.mention} for @mentions"

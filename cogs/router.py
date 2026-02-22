@@ -8,7 +8,7 @@ import aiohttp
 
 from google.genai.types import Part
 
-from config import tracked_channels
+from utils.config_manager import dynamic_config
 from utils.helpers import clean_discord_message, extract_url, is_youtube_url, extract_custom_emojis, get_emoji_cdn_url
 from utils.gemini import tracked_threads, get_settings, has_auto_respond_for_channel
 from utils.typing import typing_manager
@@ -52,7 +52,7 @@ class Router(commands.Cog):
             has_context_for_channel = has_auto_respond_for_channel(message.author.id, message.channel.id)
 
             # Check if the message is a DM, in tracked channels/threads, mentions the bot, or has pending context for this channel
-            if isinstance(message.channel, discord.DMChannel) or message.channel.id in tracked_channels or message.channel.id in tracked_threads or bot_mentioned or has_context_for_channel:
+            if isinstance(message.channel, discord.DMChannel) or message.channel.id in dynamic_config.tracked_channels or message.channel.id in tracked_threads or bot_mentioned or has_context_for_channel:
                 import time as _time
                 _process_start = _time.monotonic()
                 cleaned_text = clean_discord_message(message.content)
@@ -72,7 +72,7 @@ class Router(commands.Cog):
                 
                 # Start typing indicator with reference counting (handles concurrent messages)
                 from utils.typing import typing_manager
-                await typing_manager.start_typing(message.channel)
+                await typing_manager.start_typing(message.channel, message.id)
                 try:
                     # Enrich cleaned text with sticker, GIF, and emoji context
                     # Also collect media_parts (actual images) for visual content
@@ -121,13 +121,28 @@ class Router(commands.Cog):
                                                     image_bytes = await resp.read()
                                                     content_type = resp.headers.get('Content-Type', 'image/gif')
                                                     if content_type.startswith('image/') or content_type.startswith('video/'):
-                                                        media_parts.append(Part(text=label))
-                                                        media_parts.append(Part(inline_data={
-                                                            "mime_type": content_type.split(';')[0],
-                                                            "data": image_bytes
-                                                        }))
+                                                        import tempfile, os
+                                                        from utils.gemini import api_key_manager, execute_with_retry
+                                                        ext = '.gif' if content_type.startswith('image/gif') else '.mp4'
+                                                        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
+                                                            tmp_file.write(image_bytes)
+                                                            tmp_path = tmp_file.name
+                                                        
+                                                        try:
+                                                            uploaded_file = await execute_with_retry(
+                                                                lambda path=tmp_path: api_key_manager.client.files.upload(file=path)
+                                                            )
+                                                            media_parts.append(Part(text=label))
+                                                            media_parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
+                                                        except Exception as e:
+                                                            print(f"⚠️ Failed to upload GIF to Gemini: {e}", flush=True)
+                                                        finally:
+                                                            try:
+                                                                os.unlink(tmp_path)
+                                                            except Exception:
+                                                                pass
                                         except Exception as e:
-                                            print(f"⚠️ Failed to download GIF: {e}", flush=True)
+                                            print(f"⚠️ Failed to process GIF: {e}", flush=True)
                                 elif embed.title or embed.description:
                                     embed_parts = []
                                     if embed.title:
@@ -147,6 +162,7 @@ class Router(commands.Cog):
                             for name, emoji_id, animated in custom_emojis:
                                 emoji_url = get_emoji_cdn_url(emoji_id, animated)
                                 label = f"[Custom Emoji: {name}]"
+                                enriched_text = f"{enriched_text}\n{label}" if enriched_text else label
                                 try:
                                     async with session.get(emoji_url) as resp:
                                         if resp.status == 200:
@@ -227,7 +243,7 @@ class Router(commands.Cog):
                 finally:
                     # Safety net: force-stop typing if still active
                     # (Normally, retry.py already stops typing right before sending messages)
-                    await typing_manager.force_stop_immediate(message.channel)
+                    await typing_manager.force_stop_immediate(message.channel, message.id)
                     _total_elapsed = _time.monotonic() - _process_start
                     print(f"⏱️ Total processing time for {message.author.name}: {_total_elapsed:.2f}s", flush=True)
         except Exception as e:

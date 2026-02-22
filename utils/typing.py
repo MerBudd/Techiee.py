@@ -22,8 +22,8 @@ class TypingManager:
     """
     
     def __init__(self):
-        # {channel_id: count of active processors}
-        self._counts = defaultdict(int)
+        # {channel_id: set of active message IDs}
+        self._active_messages = defaultdict(set)
         # {channel_id: asyncio.Event signaling when count reaches 0}
         self._stop_events = {}
         # {channel_id: the running typing task}
@@ -32,14 +32,15 @@ class TypingManager:
         # {channel_id: monotonic timestamp of last keep_alive call}
         self._last_keep_alive = {}
     
-    async def start_typing(self, channel: discord.abc.Messageable):
+    async def start_typing(self, channel: discord.abc.Messageable, message_id: int):
         """Start or increment typing for a channel.
         
         Args:
             channel: Discord channel to show typing indicator in
+            message_id: ID of the message being processed
         """
         async with self._locks[channel.id]:
-            self._counts[channel.id] += 1
+            self._active_messages[channel.id].add(message_id)
             
             # Only start a new typing session if one isn't already running
             if channel.id not in self._tasks or self._tasks[channel.id].done():
@@ -49,22 +50,23 @@ class TypingManager:
                     self._typing_session(channel)
                 )
     
-    async def stop_typing(self, channel: discord.abc.Messageable):
+    async def stop_typing(self, channel: discord.abc.Messageable, message_id: int):
         """Decrement typing count. Typing stops when all processors are done.
         
         Uses a grace period to prevent flicker between consecutive operations.
         
         Args:
             channel: Discord channel to stop typing indicator for
+            message_id: ID of the message being processed
         """
         async with self._locks[channel.id]:
-            self._counts[channel.id] = max(0, self._counts[channel.id] - 1)
+            self._active_messages[channel.id].discard(message_id)
             
-            if self._counts[channel.id] == 0:
+            if len(self._active_messages[channel.id]) == 0:
                 # Signal the typing session to stop (with grace period)
                 asyncio.create_task(self._delayed_stop(channel.id))
     
-    async def force_stop_immediate(self, channel: discord.abc.Messageable):
+    async def force_stop_immediate(self, channel: discord.abc.Messageable, message_id: int):
         """Force stop typing immediately for this processor.
         
         Decrements the reference count. If the count reaches 0, stops the
@@ -72,11 +74,12 @@ class TypingManager:
         
         Args:
             channel: Discord channel to stop typing for
+            message_id: ID of the message being processed
         """
         async with self._locks[channel.id]:
-            self._counts[channel.id] = max(0, self._counts[channel.id] - 1)
+            self._active_messages[channel.id].discard(message_id)
             
-            if self._counts[channel.id] == 0:
+            if len(self._active_messages[channel.id]) == 0:
                 event = self._stop_events.get(channel.id)
                 if event:
                     event.set()
@@ -107,7 +110,7 @@ class TypingManager:
         
         async with self._locks[channel_id]:
             # Re-check: only stop if still at 0 (no new processors started)
-            if self._counts.get(channel_id, 0) == 0:
+            if len(self._active_messages.get(channel_id, set())) == 0:
                 # Check if keep_alive was called recently (within last 2s)
                 last_alive = self._last_keep_alive.get(channel_id, 0)
                 if time.monotonic() - last_alive < 2.0:
@@ -146,18 +149,19 @@ class TypingManager:
                 self._tasks.pop(channel.id, None)
                 self._stop_events.pop(channel.id, None)
                 self._last_keep_alive.pop(channel.id, None)
-                if self._counts.get(channel.id, 0) == 0:
-                    self._counts.pop(channel.id, None)
+                if len(self._active_messages.get(channel.id, set())) == 0:
+                    self._active_messages.pop(channel.id, None)
     
-    async def force_stop(self, channel: discord.abc.Messageable):
+    async def force_stop(self, channel: discord.abc.Messageable, message_id: int):
         """Force stop typing immediately for a channel, regardless of ref count.
         
         Legacy alias for force_stop_immediate.
         
         Args:
             channel: Discord channel to force-stop typing for
+            message_id: ID of the message being processed
         """
-        await self.force_stop_immediate(channel)
+        await self.force_stop_immediate(channel, message_id)
 
     async def refresh_if_active(self, channel: discord.abc.Messageable):
         """Force a typing API call if typing is supposed to be active.
@@ -168,7 +172,7 @@ class TypingManager:
         restore it.
         """
         async with self._locks[channel.id]:
-            if self._counts.get(channel.id, 0) > 0 and channel.id in self._tasks:
+            if len(self._active_messages.get(channel.id, set())) > 0 and channel.id in self._tasks:
                 try:
                     await channel._state.http.send_typing(channel.id)
                 except Exception:

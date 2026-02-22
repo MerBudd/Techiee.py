@@ -89,11 +89,10 @@ class TextProcessor(commands.Cog):
         async def retry_callback():
             return await generate_response_with_text(contents, settings, user_display_name, user_username)
         
-        # Define history update callback for when response succeeds
-        # Store text-only version in history (media is ephemeral context)
+        # Store full user_parts so images/stickers/GIFs stay in history
         async def update_history(response_text):
-            text_only_content = create_user_content([Part(text=cleaned_text)])
-            update_message_history(message, text_only_content)
+            user_msg_content = create_user_content(user_parts)
+            update_message_history(message, user_msg_content)
             model_content = create_model_content(response_text)
             update_message_history(message, model_content)
         

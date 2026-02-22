@@ -8,7 +8,8 @@ import aiohttp
 
 from google.genai.types import Part, Content
 
-from config import tracked_channels, cooldowns
+from config import cooldowns
+from utils.config_manager import dynamic_config
 from utils.gemini import set_pending_context, tracked_threads
 
 
@@ -49,7 +50,7 @@ class Context(commands.Cog):
         channel_id = interaction.channel.id
         
         # Determine if this is a tracked context (tracked channel or thread)
-        is_tracked = channel_id in tracked_channels or channel_id in tracked_threads
+        is_tracked = channel_id in dynamic_config.tracked_channels or channel_id in tracked_threads
         is_dm = isinstance(interaction.channel, discord.DMChannel)
         
         try:
@@ -169,11 +170,24 @@ class Context(commands.Cog):
                                                 image_bytes = await resp.read()
                                                 content_type = resp.headers.get('Content-Type', 'image/gif')
                                                 if content_type.startswith('image/') or content_type.startswith('video/'):
-                                                    parts.append(Part(text=f"[GIF from {provider}]"))
-                                                    parts.append(Part(inline_data={
-                                                        "mime_type": content_type.split(';')[0],
-                                                        "data": image_bytes
-                                                    }))
+                                                    import tempfile, os
+                                                    from utils.gemini import api_key_manager, execute_with_retry
+                                                    ext = '.gif' if content_type.startswith('image/gif') else '.mp4'
+                                                    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
+                                                        tmp_file.write(image_bytes)
+                                                        tmp_path = tmp_file.name
+                                                    
+                                                    try:
+                                                        uploaded_file = await execute_with_retry(
+                                                            lambda path=tmp_path: api_key_manager.client.files.upload(file=path)
+                                                        )
+                                                        parts.append(Part(text=f"[GIF from {provider}]"))
+                                                        parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
+                                                    finally:
+                                                        try:
+                                                            os.unlink(tmp_path)
+                                                        except Exception:
+                                                            pass
                                                     continue
                                     except Exception:
                                         pass
@@ -205,7 +219,7 @@ class Context(commands.Cog):
                 context_key = ("thread", channel_id)
             elif is_dm:
                 context_key = ("dm", user_id)
-            elif channel_id in tracked_channels:
+            elif channel_id in dynamic_config.tracked_channels:
                 context_key = ("tracked", user_id)
             else:
                 context_key = ("mention", user_id)
@@ -229,7 +243,7 @@ class Context(commands.Cog):
                 scope_msg = "this thread"
             elif is_dm:
                 scope_msg = "your DMs"
-            elif channel_id in tracked_channels:
+            elif channel_id in dynamic_config.tracked_channels:
                 scope_msg = f"{interaction.user.mention} in this tracked channel"
             else:
                 scope_msg = f"{interaction.user.mention} for @mentions"
