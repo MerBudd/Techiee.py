@@ -1,77 +1,68 @@
 # Changelog
 
+## [2.8.1] - 2026-02-22
+
+### Added
+
+- **Docs and prompt polish**: Updated README, SETUP, and help text to describe multi attachment support, reply chain context, context tools, and the newer commands like `/settings`, `/reset-settings`, and `/conversation-summary`. Extended the system prompt with clearer SYSTEM INFO blocks and thinking level notes for Flash vs Pro.
+- **Operational safety**: Added a global exception catcher in the router to surface silent crashes, plus extra Gemini timing logs and context about reply chain behavior.
+
+### Changed
+
+- **Typing and cooldown tuning**: Fixed typing refcounts and GIF proxy parsing, improved keep alive behavior in `TypingManager`, and refined cooldown settings to better protect expensive operations like `/image` and context loading.
+- **History, retry, and reactions**: Ensured delete and regenerate via reactions propagate history changes using `history_key`, wired retry flow into the reaction tracker, and kept regenerated responses fully aligned with `message_history` and reaction controls.
+
+---
+
 ## [2.8.0-exp] - 2026-02-10 (Experimental)
 
 ### Added
-- **Emoji & Sticker Support**: Techiee can now "see" and describe stickers, custom emojis, and animated emojis in messages, including their names and URLs.
-- **GIF & Embed Context**: Techiee now recognizes GIFs from Tenor/Giphy and can see the contents of rich embeds (titles, descriptions, fields, footers) in the conversation history.
-- **Image Free-Tier Detection**: Improved error handling for the `/image` command to specifically detect 429 errors caused by free Gemini API keys, providing a clearer guidance message.
+
+- **Emoji, sticker, GIF and embed context**: Techiee now sees custom emojis, stickers, GIFs from Tenor or Giphy, and rich embeds (titles, descriptions, fields, footers) as real context instead of opaque links.
+- **Image API handling**: Improved `/image` error handling to recognize free tier Gemini API rate limits and return a clear “paid key required” style message.
 
 ### Changed
-- **Typing Indicator Rewrite**: Completely rewrote the `TypingManager` using Discord's `channel.typing()` context manager.
-- **Context Attachment Parity**: Both the `/context` command and the `/settings` context modal now download and process actual image data, stickers, GIFs, and embeds, matching the high-fidelity context of reply chains.
-- **Settings UI Auto-Respond**: Context loaded via the `/settings` menu now correctly enables "auto-respond" mode in non-tracked channels, matching the behavior of the separate `/context` command.
-- **Interactive Reset**: The "Reset All" button in the `/settings` menu now clears cached context and sends a public confirmation message matching the `/reset-settings` command format.
-- **Mention UI Fixes**: Conversation summaries now use plain-text usernames in the embed footer, as Discord does not render @mentions in footers. Improved wording from "via @mentions" to "for @mentions".
-- **Added `/context` Cooldown**: Implemented the missing cooldown for the `/context` command.
-- **/reset-settings in Help Text** Added the `/reset-settings` command to the help text.
 
-## [2.7.1-exp] - 2026-02-09 (Experimental)
+- **Typing system**: Rewrote typing handling around `TypingManager` and `channel.typing()` so typing stays active for concurrent work, then stops immediately once the final chunk is sent.
+- **Settings context parity**: Brought the `/settings` context UI to parity with `/context`, including attachment handling, auto respond behavior in non tracked channels, and a “Reset All” button that matches `/reset-settings`.
+
+---
+
+## [2.6.3-exp] - 2026-02-09 (Experimental)
 
 ### Changed
-- **Command Descriptions**: Refined and shortened slash command descriptions for `/image` and `/context` to comply with Discord's 100-character limit, resolving sync errors.
-- **Typing Indicator Logic**: Optimized typing indicator logic.
 
-## [2.7.0-exp] - 2026-02-08 (Experimental)
+- **Discord safe metadata**: Tightened command descriptions for `/image` and `/context` so global sync does not fail on Discord’s length limits.
 
-### Added
-- **Command Cooldowns**: Implemented per-command cooldowns (configurable in `config.py`) to prevent API spamming and rate limiting.
-- **Graceful Shutdown**: Added a shutdown handler that cancels active typing tasks and cleans up state when the bot disconnects.
-- **Enhanced `/context` Filters**: Added optional `include_user` and `exclude_user` filters to the `/context` command for more precise message loading.
-- **Multi-Admin Support**: Replaced single owner ID with a `discord_admin_ids` list in `config.py`, allowing multiple users to manage the bot.
-- **Global Error Handling**: Added a central Error Handler cog to handle cooldowns, permissions, and unexpected command failures gracefully.
-- **Multimodal Reply Chains**: Context from reply chains now includes actual image data, allowing Techiee to "see" images in previous messages when you reply to them.
-
-### Fixed
-- **Empty Response Crashes**: Added safety checks for `response.text` across all multimodal processors to prevent crashes on empty API results.
-- **LaTeX Math Rendering**: Conversion now strictly applies only to content within `$...$` and `$$...$$` delimiters, preventing unintended text modification.
-- **Typing Indicator Flicker**: Added a 150ms grace period to the `TypingManager` to ensure continuity when switching between concurrent message processors.
-- **Multimodal Processor Construction**: Fixed inconsistent `Content` object construction in image and video processors when message history was empty.
-- **Sync Command Hanging**: Added try/except handling and better user feedback to the `/sync` command.
-- **Memory Leak**: Implemented stale lock/count pruning in `TypingManager` to prevent long-term memory growth.
+---
 
 ## [2.6.2-exp] - 2026-02-08 (Experimental)
 
-### Fixed
-- **Message History Sync**: Fixed an issue where deleting or regenerating a response (via reactions) wouldn't update the bot's memory. The bot now correctly forgets deleted messages and remembers regenerated ones.
-- **Settings Visibility**: Settings changes made via `/settings` in tracked channels are now visible to everyone in the channel, similar to how they work in threads.
+### Added
 
-## [2.6.1-exp] - 2026-02-08 (Experimental)
+- **Scoped context and filters**: Introduced tuple based `context_key`s to isolate DMs, tracked channels, threads, and mentions, plus `/context` filters like `include_user` and `exclude_user` for precise history loading.
+- **Admin and cooldown tooling**: Added multi admin support via `discord_admin_ids`, per command cooldowns in `config.cooldowns`, and a global `ErrorHandler` cog for clean cooldown and permission errors.
 
-### Fixed
-- **Context Isolation & Scoping**: Resolved "context slipping" issues where context from one conversation (e.g., a DM) would bleed into others. Implemented distinct `context_key` tuples for DMs, tracked channels, threads, and @mentions.
-- **Interactive `/settings` Improvements**: 
-  - Added user mentions to scope messages in non-shared contexts for better clarity.
-  - Settings changes in tracked threads are now public (non-ephemeral), allowing all thread participants to see configuration changes.
-- **Context Loading UI**: Replaced fixed defaults in the `/settings` context button with an interactive `ContextModal`, allowing users to choose exactly how many messages to load and for how long the context persists.
-- **`/help` Command Stability**: Converted the long help text into a Discord Embed, fixing errors caused by exceeding Discord's 2000-character message limit.
-- **Deprecation Fixes**: Resolved `DeprecationWarning` related to `interaction.message` and `message.interaction` by migrating to modern Discord.py metadata fields.
-- **Processor Sync**: Updated all multimodal processors (images, videos, YouTube, websites, files) to correctly utilize the new context scoping logic.
+### Changed
+
+- **Settings and visibility**: Reworked `/settings` into a richer UI, made settings changes public in tracked contexts, and standardized context loading messages so everyone sees when context is active.
+- **Help and processors**: Converted `/help` to an embed to stay within Discord limits and updated all processors to respect the new context scoping, history keys, and pending context model.
+
+---
 
 ## [2.6.0-exp] - 2026-02-07 (Experimental)
- 
+
 ### Added
-- **Multi-Attachment Support**: Techiee can now process all attachments in a message simultaneously (up to Discord's limit), including mixed types like multiple images, videos, and documents.
-- **Reaction-Based Actions**: Interactive reactions on bot responses:
-  - 🗑️: Delete the bot's response (Author only).
-  - 🔄: Regenerate the response (Author only).
-- **Reply Chain Context**: Automatically fetches up to 10 previous messages in a reply chain to maintain context when you reply to an older message.
-- **Interactive `/settings` Menu**: A comprehensive, GUI-based settings menu using Discord's dropdowns and buttons for managing thinking levels and personas.
-- **`/conversation-summary` Command**: Generatesa concise summary of your current conversation history.
- 
+
+- **Multi-attachment support and reply chains**: Techiee can process all attachments in a message together, and uses `utils.reply_chain` to pull reply chains into Gemini context so it sees earlier text and images when you reply.
+- **Reactions, summaries, and context**: Added reaction controls for delete / regenerate, a `/conversation-summary` command for quick recaps, and the first `/context` implementation for loading recent channel history as temporary AI context.
+
 ### Changed
-- **Processor Architecture**: Updated all processor cogs to handle lists of attachments and reply chain context fragments.
-- **Response Tracking**: Implemented an LRU-cached Response Tracker for reaction processing.
+
+- **Router and processors**: Refactored router and multimodal processors to accept lists of attachments, share response tracking, and keep history in a consistent format.
+- **System prompt basics**: Included current date/time plus user identification in the system prompt so responses are time aware and user specific.
+
+---
 
 ## [2.5.0] - 2026-02-07
 
@@ -92,8 +83,7 @@
 - **Configs Reorganization**: Reorganized `config.py` for better organization.
 - **Google Search Grounding**: Changed Google search grounding tool on/off switching from being manual code un-commenting to a toggle in `config.py`
 
-### Fixed
-- **Discord-friendly Math Rendering**: Automatically converts LaTeX math notation (e.g., `$\frac{a}{b}$`, `$\alpha$`, `$x^2$`) into readable Unicode text wrapped in code blocks for better Discord display.
+---
 
 ## [2.4.0] - 2026-01-28
 
@@ -103,6 +93,8 @@
   - Only the original message author can use it.
   - Automatic error handling: button updates to reflect retry status and failure counts.
   - Error message is automatically deleted and replaced with the actual response upon successful retry.
+
+---
 
 ## [2.3.0] - 2026-01-27
 
@@ -124,6 +116,8 @@
 - **Bot Mention Support**: Bot now responds when @ mentioned in any channel, as intended.
 - **Public Thread Creation**: Threads are now created as public instead of private, as intended.
 
+---
+
 ## [2.2.0] - 2026-01-26
 
 ### Added
@@ -138,6 +132,8 @@
 ### Fixed
 - **Typing Indicator**: Improved management of the Discord typing indicator to ensure it remains active during long response generations and cancels correctly upon message delivery.
 
+---
+
 ## [2.1.0] - 2026-01-26
 
 ### Added
@@ -148,6 +144,8 @@
 - **Thinking Defaults**: Updated the default thinking level for the AI.
 - **Command Management**: Enhanced global command synchronization logic for better reliability.
 - **Clarified docs**: Updated the README, SETUP and CHANGELOG files, and updated a few comments in `config.py` and `Techiee.py`
+
+---
 
 ## [2.0.0] - 2026-01-21
 
