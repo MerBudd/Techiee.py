@@ -67,7 +67,7 @@ max_history = 30
 # Prevents spamming of expensive commands
 cooldowns = {
     "context": 7,     # /context command
-    "image": 20,       # /image command (expensive API call)
+    "image": 15,       # /image command (expensive API call)
     "settings": 8,     # /settings command
     "forget": 4,       # /forget command
 }
