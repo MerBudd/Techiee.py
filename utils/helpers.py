@@ -4,6 +4,35 @@ Utility functions for message handling and URL processing.
 import re
 
 
+def extract_custom_emojis(text):
+    """Extract custom emoji info from Discord message text.
+    
+    Parses <:name:id> and <a:name:id> patterns.
+    
+    Returns:
+        List of (name, id, animated) tuples.
+    """
+    if not text:
+        return []
+    pattern = r'<(a?):(\w+):(\d+)>'
+    matches = re.findall(pattern, text)
+    return [(name, emoji_id, animated == 'a') for animated, name, emoji_id in matches]
+
+
+def get_emoji_cdn_url(emoji_id, animated=False):
+    """Get the CDN URL for a custom Discord emoji.
+    
+    Args:
+        emoji_id: The emoji ID string
+        animated: Whether the emoji is animated
+    
+    Returns:
+        CDN URL string
+    """
+    ext = 'gif' if animated else 'png'
+    return f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}?size=128"
+
+
 async def split_and_send_messages(message, text, max_length, user_id=None):
     """Split long messages and send them sequentially, using reply for first message.
     
@@ -157,10 +186,25 @@ async def split_and_send_messages(message, text, max_length, user_id=None):
 
 
 def clean_discord_message(input_string):
-    """Clean Discord message of any <@!123456789> tags."""
-    bracket_pattern = re.compile(r'<[^>]+>')
-    cleaned_content = bracket_pattern.sub('', input_string)
-    return cleaned_content.strip()
+    """Clean Discord message, preserving emojis while removing user/role/channel mentions.
+    
+    - Custom emojis <:name:id> → [Emoji: name]
+    - Animated emojis <a:name:id> → [Animated Emoji: name]
+    - User mentions <@id> or <@!id> → removed
+    - Role mentions <@&id> → removed
+    - Channel mentions <#id> → removed
+    - Timestamps <t:...> → removed
+    - Unicode emojis are left untouched (they're not wrapped in <>)
+    """
+    # Preserve custom emojis (static and animated) before stripping other tags
+    # Animated: <a:name:id> → [Animated Emoji: name]
+    cleaned = re.sub(r'<a:(\w+):\d+>', r'[Animated Emoji: \1]', input_string)
+    # Static: <:name:id> → [Emoji: name]
+    cleaned = re.sub(r'<:(\w+):\d+>', r'[Emoji: \1]', cleaned)
+    
+    # Remove user mentions, role mentions, channel mentions, and timestamps
+    cleaned = re.compile(r'<[^>]+>').sub('', cleaned)
+    return cleaned.strip()
 
 
 def extract_url(string):
@@ -199,3 +243,152 @@ def is_youtube_url(url):
         r'(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
     )
     return re.match(youtube_regex, url) is not None
+
+
+def convert_latex_to_discord(text):
+    """Convert LaTeX math notation to Discord-friendly Unicode text.
+    
+    ONLY converts content inside $...$ (inline) or $$...$$ (display) delimiters.
+    Text outside of these delimiters is left completely untouched.
+    
+    Args:
+        text: Text that may contain LaTeX math notation
+    
+    Returns:
+        Text with LaTeX inside delimiters converted to Unicode
+    """
+    if not text:
+        return text
+    
+    # Greek letters (lowercase)
+    greek_lower = {
+        r'\\alpha': 'α', r'\\beta': 'β', r'\\gamma': 'γ', r'\\delta': 'δ',
+        r'\\epsilon': 'ε', r'\\zeta': 'ζ', r'\\eta': 'η', r'\\theta': 'θ',
+        r'\\iota': 'ι', r'\\kappa': 'κ', r'\\lambda': 'λ', r'\\mu': 'μ',
+        r'\\nu': 'ν', r'\\xi': 'ξ', r'\\pi': 'π', r'\\rho': 'ρ',
+        r'\\sigma': 'σ', r'\\tau': 'τ', r'\\upsilon': 'υ', r'\\phi': 'φ',
+        r'\\chi': 'χ', r'\\psi': 'ψ', r'\\omega': 'ω',
+    }
+    
+    # Greek letters (uppercase)
+    greek_upper = {
+        r'\\Alpha': 'Α', r'\\Beta': 'Β', r'\\Gamma': 'Γ', r'\\Delta': 'Δ',
+        r'\\Epsilon': 'Ε', r'\\Zeta': 'Ζ', r'\\Eta': 'Η', r'\\Theta': 'Θ',
+        r'\\Iota': 'Ι', r'\\Kappa': 'Κ', r'\\Lambda': 'Λ', r'\\Mu': 'Μ',
+        r'\\Nu': 'Ν', r'\\Xi': 'Ξ', r'\\Pi': 'Π', r'\\Rho': 'Ρ',
+        r'\\Sigma': 'Σ', r'\\Tau': 'Τ', r'\\Upsilon': 'Υ', r'\\Phi': 'Φ',
+        r'\\Chi': 'Χ', r'\\Psi': 'Ψ', r'\\Omega': 'Ω',
+    }
+    
+    # Common math symbols
+    math_symbols = {
+        r'\\times': '×', r'\\div': '÷', r'\\pm': '±', r'\\mp': '∓',
+        r'\\cdot': '·', r'\\ast': '∗', r'\\star': '★',
+        r'\\leq': '≤', r'\\geq': '≥', r'\\neq': '≠', r'\\approx': '≈',
+        r'\\equiv': '≡', r'\\sim': '∼', r'\\propto': '∝',
+        r'\\infty': '∞', r'\\partial': '∂', r'\\nabla': '∇',
+        r'\\sum': '∑', r'\\prod': '∏', r'\\int': '∫',
+        r'\\forall': '∀', r'\\exists': '∃', r'\\in': '∈', r'\\notin': '∉',
+        r'\\subset': '⊂', r'\\supset': '⊃', r'\\subseteq': '⊆', r'\\supseteq': '⊇',
+        r'\\cup': '∪', r'\\cap': '∩', r'\\emptyset': '∅',
+        r'\\rightarrow': '→', r'\\leftarrow': '←', r'\\leftrightarrow': '↔',
+        r'\\Rightarrow': '⇒', r'\\Leftarrow': '⇐', r'\\Leftrightarrow': '⇔',
+        r'\\to': '→', r'\\gets': '←',
+        r'\\angle': '∠', r'\\degree': '°', r'\\circ': '°',
+        r'\\perp': '⊥', r'\\parallel': '∥',
+        r'\\ldots': '…', r'\\cdots': '⋯', r'\\vdots': '⋮',
+        r'\\therefore': '∴', r'\\because': '∵',
+        r'\\left|': '|', r'\\right|': '|',
+        r'\\left(': '(', r'\\right)': ')',
+        r'\\left[': '[', r'\\right]': ']',
+        r'\\left\\{': '{', r'\\right\\}': '}',
+        r'\\{': '{', r'\\}': '}',
+        r'\\quad': '  ', r'\\qquad': '    ', r'\\ ': ' ',
+    }
+    
+    # Superscript digits mapping
+    superscript_map = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
+        'n': 'ⁿ', 'i': 'ⁱ',
+    }
+    
+    # Subscript digits mapping
+    subscript_map = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+        '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+        'a': 'ₐ', 'e': 'ₑ', 'o': 'ₒ', 'x': 'ₓ',
+        'i': 'ᵢ', 'j': 'ⱼ', 'n': 'ₙ', 'r': 'ᵣ', 'u': 'ᵤ', 'v': 'ᵥ',
+    }
+    
+    def convert_latex_content(latex_text):
+        """Convert LaTeX notation within a math block to Unicode."""
+        result = latex_text
+        
+        # Replace Greek letters
+        for latex, unicode_char in {**greek_lower, **greek_upper}.items():
+            result = re.sub(latex, unicode_char, result)
+        
+        # Replace math symbols
+        for latex, unicode_char in math_symbols.items():
+            result = re.sub(re.escape(latex.replace('\\\\', '\\')), unicode_char, result)
+        
+        # Handle fractions: \frac{a}{b} -> a/b
+        frac_pattern = r'\\frac\{([^{}]+)\}\{([^{}]+)\}'
+        result = re.sub(frac_pattern, r'(\1)/(\2)', result)
+        
+        # Handle square roots: \sqrt{x} -> √(x)
+        sqrt_pattern = r'\\sqrt\{([^{}]+)\}'
+        result = re.sub(sqrt_pattern, r'√(\1)', result)
+        
+        # Handle nth roots: \sqrt[n]{x} -> ⁿ√(x)
+        nthroot_pattern = r'\\sqrt\[([^\]]+)\]\{([^{}]+)\}'
+        def nthroot_replace(m):
+            n, x = m.group(1), m.group(2)
+            n_super = ''.join(superscript_map.get(c, c) for c in n)
+            return f'{n_super}√({x})'
+        result = re.sub(nthroot_pattern, nthroot_replace, result)
+        
+        # Handle superscripts: ^{xyz} or ^x -> superscript
+        def superscript_replace(m):
+            content = m.group(1) or m.group(2)
+            return ''.join(superscript_map.get(c, c) for c in content)
+        result = re.sub(r'\^\{([^{}]+)\}|\^([0-9n+-])', superscript_replace, result)
+        
+        # Handle subscripts: _{xyz} or _x -> subscript
+        def subscript_replace(m):
+            content = m.group(1) or m.group(2)
+            return ''.join(subscript_map.get(c, c) for c in content)
+        result = re.sub(r'_\{([^{}]+)\}|_([0-9a-z])', subscript_replace, result)
+        
+        # Handle text in math mode: \text{...} -> just the text
+        result = re.sub(r'\\text\{([^{}]+)\}', r'\1', result)
+        result = re.sub(r'\\mathrm\{([^{}]+)\}', r'\1', result)
+        result = re.sub(r'\\mathbf\{([^{}]+)\}', r'\1', result)
+        
+        return result
+    
+    # Check if there are any LaTeX delimiters in the text
+    if '$' not in text:
+        return text  # No LaTeX to convert
+    
+    result = text
+    
+    # Process display math first ($$...$$) - wrap in code block
+    def replace_display_math(match):
+        content = match.group(1)
+        converted = convert_latex_content(content)
+        return f'```\n{converted}\n```'
+    result = re.sub(r'\$\$([^\$]+)\$\$', replace_display_math, result)
+    
+    # Process inline math ($...$) - wrap in inline code
+    def replace_inline_math(match):
+        content = match.group(1)
+        converted = convert_latex_content(content)
+        return f'`{converted}`'
+    result = re.sub(r'\$([^\$]+)\$', replace_inline_math, result)
+    
+    return result
+

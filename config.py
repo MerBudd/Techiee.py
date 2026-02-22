@@ -48,8 +48,12 @@ generation_config = {
 enable_google_search = False
 
 # --- Discord Settings ---
-# Your Discord User ID, used for the /sync command
-discord_user_id = 622137576836431882
+# Admin Discord User IDs - these users can use /sync and other admin commands
+# Add more IDs to the list to allow multiple admins
+discord_admin_ids = [622137576836431882, 446889759403671554, 123456789012345678]
+
+# Backwards compatibility - first admin ID
+discord_user_id = discord_admin_ids[0] if discord_admin_ids else None
 
 # The list of tracked channels (the Discord IDs of said channels), in which Techiee will always respond to messages
 tracked_channels = [
@@ -58,6 +62,15 @@ tracked_channels = [
 
 # The maximum amount of messages to be saved in the message history before the oldest message gets deleted, set to 0 to disable message history
 max_history = 30
+
+# --- Command Cooldowns (in seconds) ---
+# Prevents spamming of expensive commands
+cooldowns = {
+    "context": 7,     # /context command
+    "image": 15,       # /image command (expensive API call)
+    "settings": 8,     # /settings command
+    "forget": 4,       # /forget command
+}
 
 # --- Default Prompts ---
 # Default prompt if the message is just a URL, just a PDF file / text file, or just an image and nothing else
@@ -77,28 +90,25 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 
 * **💬 Chat**: Ask me questions, tell me stories, or just have a conversation!
 * **✨ Summarize**: Give me a link, document, text file, or block of text, and I'll summarize it for you.
-* **🎨 Process Images**: Send me an image and I'll describe what I see.
-* **🖼️ Generate/Edit Images**: Use `/image` to generate new images or edit existing ones! Note: requires a paid API key.
-* **📄 Process Files**: Send me a PDF, Word document or text file and I'll extract and summarize the content.
-* **🌐 Process Web Content**: Share a website URL or YouTube video and we can chat about it.
+* **🖼️ Multi-Attachment Support**: Send me multiple images, videos, documents, or files, in one or more messages, and I'll analyze them all together!
+* **🎨 Image Generation**: Use `/image` to generate new images or edit existing ones! Note: requires a paid API key.
+* **🌐 Web & YouTube Integration**: Share a website URL or YouTube video and we can chat about it.
+* **🗑️ Interactive Actions**: React to my messages with 🗑️ to delete them or 🔄 to regenerate my response!
 
 ## Commands:
 
 * `/help` - Shows this help message
-* `/createthread <name>` - Creates a thread where I'll respond to every message
-* `/thinking <level>` - Sets my thinking/reasoning depth:
-  * `minimal` - Fastest responses, less reasoning (default)
-  * `low` - Fast, simple reasoning
-  * `medium` - Balanced thinking
-  * `high` - Deep reasoning
-* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset.
-* `/image <prompt> [image1] [image2] [image3] [aspect_ratio]` - Generate or edit images:
-  * `prompt` - What to generate or how to edit (required)
-  * `image1/2/3` - Images to edit (optional, attach up to 3)
-  * `aspect_ratio` - Output size: 1:1, 16:9, 9:16, 4:3, 3:4 (optional, default: 1:1)
-* `/context <count>` - Load recent channel messages as context for your next message
-* `/forget` - Clears your message history with me
-* `/sync` - Syncs slash commands (owner only)
+* `/thinking <level>` - Set my thinking/reasoning depth (minimal, low, medium, high)
+-# *Note:* Gemini 3 Flash supports all four thinking levels. Gemini 3 Pro only supports Low and High.
+* `/context [count] [lasts_for] [include_user] [exclude_user]` - Load recent messages from this channel as context, letting me reference past conversations
+* `/create-thread <name>` - Create a dedicated thread where I'll respond to every message
+* `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset
+* `/forget` - Clear your conversation history with me in the current context (DM, thread, or channel)
+* `/settings` - Open the settings panel to customize thinking depth, persona, and load conversation context
+* `/reset-settings` - Reset all AI settings (persona, thinking level, context) to defaults
+* `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
+* `/conversation-summary` - Generates an AI summary of our current chat history
+* `/sync` - Sync slash commands globally (admin only)
 
 -# *Note:* I'm still under development, so I might not always get things right."""
 
@@ -114,13 +124,15 @@ def get_system_instruction(user_display_name: str = None, user_username: str = N
     # Build user info string
     user_info = ""
     if user_display_name and user_username:
-        user_info = f"\nYou are currently talking to {user_display_name} (@{user_username})."
+        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name} (Discord username: @{user_username})."
     elif user_display_name:
-        user_info = f"\nYou are currently talking to {user_display_name}."
+        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name}."
     elif user_username:
-        user_info = f"\nYou are currently talking to @{user_username}."
+        user_info = f"\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is @{user_username}."
     
-    return f"""You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos.
+    return f"""[SYSTEM INSTRUCTION — This is automatically injected by the Techiee system, NOT typed by any user.]
+
+You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
 
 The current date and time is: {current_datetime}.{user_info}
 
@@ -142,14 +154,21 @@ When a user asks for technical help or serious info, prioritize being clear and 
 If a specific persona is set, that role is your absolute priority. You must completely immerse yourself in that role and stay in character 100% of the time. Adopt the persona's speech patterns, vocabulary, tone, and worldview without exception.
 If the persona is mean, be mean. If the persona is weird, be weird. The persona's traits override any "helpful assistant" rules. Do not mention you are an AI or slip back into default mode while in character. Strict adherence to the persona is your highest priority.
 
+Users can interact with your responses using reactions (Author only):
+* React with 🗑️ to delete your message.
+* React with 🔄 to trigger a regeneration of your response.
+
 You have the following commands:
-- /help: Shows helpful info about you and shows your commands
-- /createthread: Creates a thread, in which you will always respond in
-- /thinking: Sets your thinking/reasoning level (minimal, low, medium, high)
-- /persona: Sets a custom personality for you
-- /image: Generates or edits images (Note: requires a paid API key)
-- /context: Loads recent channel messages as context for the next message
-- /forget: Clears your message history with the user
+- /help: Shows helpful info and your commands in a detailed embed.
+- /thinking: Sets your thinking/reasoning level (minimal, low, medium, high).
+- /context: Loads recent channel messages as context for the next message.
+- /create-thread: Creates a thread in which you will always respond.
+- /persona: Sets a custom personality for you.
+- /forget: Clears your message history for the current context.
+- /settings: Opens an interactive menu to adjust your thinking level, persona, and load conversation context with custom options.
+- /reset-settings: Resets all AI settings (persona, thinking level, context) to defaults.
+- /image: Generates or edits images (requires a paid API key).
+- /conversation-summary: Generates an AI summary of the current conversation history.
 
 Note: Image generation (/image command) and Google Search grounding features require a paid Gemini API key. If using a free API key, these features will not be available.
 
@@ -180,7 +199,10 @@ google_search_tool = Tool(google_search=GoogleSearch()) if enable_google_search 
 url_context_tool = Tool(url_context=UrlContext())
 
 # --- Config Generator ---
-# Techiee's default thinking level is minimal. The user can change the thinking level with the /thinking command. See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
+# Techiee's default thinking level is minimal. The user can change the thinking level with the /thinking command.
+# See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
+# Note: Gemini 3 Flash supports all thinking levels (minimal, low, medium, high).
+# Gemini 3 Pro only supports Low and High. If you switch to Pro, use only those levels.
 def create_generate_config(system_instruction, thinking_level="minimal", tools=None):
     return GenerateContentConfig(
         system_instruction=system_instruction,

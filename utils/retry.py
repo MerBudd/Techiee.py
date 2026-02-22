@@ -6,6 +6,7 @@ import discord
 from discord import ui
 
 from utils.helpers import split_and_send_messages
+from utils.typing import typing_manager
 
 
 def is_503_error(response_text):
@@ -53,7 +54,7 @@ class RetryView(ui.View):
     - Deletes error message and sends success response normally
     """
     
-    def __init__(self, author_id, original_message, retry_callback, update_history_callback=None, max_retries=5, timeout=120):
+    def __init__(self, author_id, original_message, retry_callback, update_history_callback=None, history_key=None, max_retries=5, timeout=120):
         """Initialize the retry view.
         
         Args:
@@ -61,6 +62,7 @@ class RetryView(ui.View):
             original_message: The original Discord message to reply to
             retry_callback: Async function to call on retry that returns response_text
             update_history_callback: Optional async function to update history on success
+            history_key: Tuple key for message_history (for delete/regenerate sync)
             max_retries: Maximum number of retry attempts
             timeout: View timeout in seconds
         """
@@ -69,6 +71,7 @@ class RetryView(ui.View):
         self.original_message = original_message
         self.retry_callback = retry_callback
         self.update_history_callback = update_history_callback
+        self.history_key = history_key
         self.max_retries = max_retries
         self.retry_count = 0
         self.error_message = None  # Will be set after sending
@@ -152,16 +155,37 @@ class RetryView(ui.View):
             if self.update_history_callback:
                 await self.update_history_callback(response_text)
             
-            # Send the successful response
-            await split_and_send_messages(
+            # Stop typing immediately since we're about to send the response
+            await typing_manager.force_stop_immediate(self.original_message.channel)
+            
+            # Send the successful response with tracking
+            sent_messages = await split_and_send_messages_with_tracking(
                 self.original_message, 
                 response_text, 
                 1900, 
                 self.original_message.author.id
             )
             
+            # Import here to avoid circular imports
+            from cogs.reactions import response_tracker, add_reaction_buttons
+            
+            # Track and add reactions only to the LAST message (but link all splits)
+            if sent_messages:
+                all_ids = [m.id for m in sent_messages]
+                last_msg = sent_messages[-1]
+                response_tracker.track(
+                    bot_message_id=last_msg.id,
+                    author_id=self.original_message.author.id,
+                    original_message=self.original_message,
+                    regenerate_callback=self.retry_callback,
+                    all_message_ids=all_ids,
+                    history_key=self.history_key
+                )
+                await add_reaction_buttons(last_msg)
+            
             # Stop the view
             self.stop()
+
     
     async def on_timeout(self):
         """Handle view timeout - disable the button."""
@@ -175,7 +199,7 @@ class RetryView(ui.View):
                 pass
 
 
-async def send_response_with_retry(message, response_text, retry_callback, update_history_callback=None):
+async def send_response_with_retry(message, response_text, retry_callback, update_history_callback=None, history_key=None):
     """Send a response, showing a retry button if it's a 503 error.
     
     Args:
@@ -183,18 +207,23 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
         response_text: The response text from Gemini API
         retry_callback: Async function to call on retry that returns new response_text
         update_history_callback: Optional async function to call on success with the response_text
+        history_key: Tuple key for message_history (for delete/regenerate sync)
     
     Returns:
         True if response was sent successfully (either initially or after retry flow started),
         False if there was an issue.
     """
+    # Import here to avoid circular imports
+    from cogs.reactions import response_tracker, add_reaction_buttons
+    
     if is_503_error(response_text):
         # Create retry view
         view = RetryView(
             author_id=message.author.id,
             original_message=message,
             retry_callback=retry_callback,
-            update_history_callback=update_history_callback
+            update_history_callback=update_history_callback,
+            history_key=history_key
         )
         
         # Send error message with retry button
@@ -216,5 +245,92 @@ async def send_response_with_retry(message, response_text, retry_callback, updat
         if update_history_callback:
             await update_history_callback(response_text)
         
-        await split_and_send_messages(message, response_text, 1900, message.author.id)
+        # Stop typing immediately since we're about to send the response
+        await typing_manager.force_stop_immediate(message.channel)
+        
+        # Send the response and get the sent message(s)
+        sent_messages = await split_and_send_messages_with_tracking(
+            message, response_text, 1900, message.author.id
+        )
+        
+        # Track and add reactions only to the LAST message (but link all splits)
+        if sent_messages:
+            all_ids = [m.id for m in sent_messages]
+            last_msg = sent_messages[-1]
+            response_tracker.track(
+                bot_message_id=last_msg.id,
+                author_id=message.author.id,
+                original_message=message,
+                regenerate_callback=retry_callback,
+                all_message_ids=all_ids,
+                history_key=history_key
+            )
+            await add_reaction_buttons(last_msg)
+        
         return True
+
+
+
+async def split_and_send_messages_with_tracking(message, text, max_length, user_id=None):
+    """Split long messages and send them, returning the sent message objects.
+    
+    This is a variant of split_and_send_messages that returns the sent messages
+    for tracking purposes (reaction-based actions).
+    """
+    sent_messages = []
+    
+    if not text:
+        return sent_messages
+    
+    # If text fits in one message, just send it
+    if len(text) <= max_length:
+        sent_msg = await message.reply(text, mention_author=True)
+        sent_messages.append(sent_msg)
+        return sent_messages
+    
+    # Reserve space for indicator " ... [XX/XX]" (max 13 chars) + mention " <@USER_ID>" (max ~25 chars)
+    mention_reserve = 25 if user_id else 0
+    indicator_reserve = 15 + mention_reserve
+    effective_max = max_length - indicator_reserve
+    
+    # Split the text into chunks (simplified for tracking purposes)
+    chunks = []
+    remaining = text
+    
+    while remaining:
+        if len(remaining) <= effective_max:
+            chunks.append(remaining)
+            break
+        
+        # Find a safe cut point (space or newline)
+        cut_pos = effective_max
+        space_pos = remaining.rfind(' ', 0, effective_max)
+        if space_pos > effective_max * 0.3:
+            cut_pos = space_pos + 1
+        
+        chunk = remaining[:cut_pos].rstrip()
+        chunks.append(chunk)
+        remaining = remaining[cut_pos:].lstrip()
+    
+    # Add indicators to each chunk
+    user_mention = f" <@{user_id}>" if user_id else ""
+    total = len(chunks)
+    for i in range(len(chunks)):
+        if i == 0:
+            if total > 1:
+                chunks[i] = f"{chunks[i]}... [{i+1}/{total}]"
+        elif i < total - 1:
+            chunks[i] = f"{chunks[i]}... [{i+1}/{total}]{user_mention}"
+        else:
+            chunks[i] = f"{chunks[i]} [{i+1}/{total}]{user_mention}"
+    
+    # Send the messages and collect them
+    for idx, chunk in enumerate(chunks):
+        if idx == 0:
+            sent_msg = await message.reply(chunk, mention_author=True)
+        else:
+            sent_msg = await message.channel.send(chunk)
+        sent_messages.append(sent_msg)
+    
+    return sent_messages
+

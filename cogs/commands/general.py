@@ -5,8 +5,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import help_text, tracked_channels
-from utils.gemini import tracked_threads, message_history, get_history_key
+from config import help_text, tracked_channels, cooldowns
+from utils.gemini import tracked_threads, message_history, get_history_key, pending_context
 
 
 class General(commands.Cog):
@@ -15,12 +15,17 @@ class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.command(name='help', description='Shows help(ful) info and commands for Techiee.')
+    @app_commands.command(name='help', description='View all available commands and learn about Techiee\'s features.')
     async def help(self, interaction: discord.Interaction):
-        # Display help information.
-        await interaction.response.send_message(help_text)
+        # Display help information using embed (supports up to 4096 chars)
+        embed = discord.Embed(
+            title="<:techiee:1465670132050300960> Techiee Help",
+            description=help_text[help_text.find("Hey there!"):],  # Skip the header
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed)
     
-    @app_commands.command(name='createthread', description='Create a thread in which Techiee will respond to every message.')
+    @app_commands.command(name='create-thread', description='Create a dedicated thread where Techiee responds to every message.')
     async def create_thread(self, interaction: discord.Interaction, name: str):
         # Create a tracked thread for bot conversations.
         try:
@@ -30,7 +35,8 @@ class General(commands.Cog):
         except Exception as e:
             await interaction.response.send_message("❗️ Error creating thread!")
     
-    @app_commands.command(name='forget', description='Clear your message history with Techiee.')
+    @app_commands.checks.cooldown(1, cooldowns.get("forget", 5))
+    @app_commands.command(name='forget', description='Clear your conversation history with Techiee in the current context (DM, thread, or channel).')
     async def forget(self, interaction: discord.Interaction):
         """Clear message history for the current context."""
         # Determine the appropriate history key based on context
@@ -56,7 +62,14 @@ class General(commands.Cog):
         
         if history_key in message_history:
             del message_history[history_key]
+            # Also clear any pending context for this key
+            if history_key in pending_context:
+                del pending_context[history_key]
             await interaction.response.send_message(f"🧼 History cleared for {scope_msg}!")
+        elif history_key in pending_context:
+            # Only pending context exists
+            del pending_context[history_key]
+            await interaction.response.send_message(f"🧼 Pending context cleared for {scope_msg}!")
         else:
             await interaction.response.send_message("📭 No history to clear in this context.")
 

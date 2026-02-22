@@ -70,9 +70,11 @@
 - **Dynamic Date/Time Awareness**: Techiee now knows the current date and time in every conversation.
 - **User Identification**: System prompt now includes the user's display name and @username.
 - **System Prompt Paid Feature Notes**: System prompt now informs Techiee that image generation and Google Search grounding require a paid API key.
-- **`/context` Command**: New slash command to load recent channel messages as context for your next message.
-  - Fetches messages from other users (excludes your own messages and Techiee's replies to you).
-  - Context is used for your next message only, then automatically cleared.
+- **`/context` Command**: New slash command to load recent channel messages as context.
+  - `count` parameter: Number of messages to load (1-50, default: 10).
+  - `lasts_for` parameter: Context persists for multiple messages (1-20, default: 5).
+  - **Channel-aware filtering**: Includes your own messages in non-tracked channels, excludes them in tracked channels/threads.
+  - **Auto-response**: In non-tracked channels, Techiee responds to your next messages without needing @mention.
   - Works with all content types: text, images, videos, files, YouTube URLs, and website URLs.
 
 ### Changed

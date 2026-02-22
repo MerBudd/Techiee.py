@@ -31,6 +31,8 @@ bot = commands.Bot(
 
 # List of cogs to load - organized by category
 COGS = [
+    # Error handler - must load first for global error handling
+    "cogs.error_handler",
     # Processors - content type handlers
     "cogs.processors.text",
     "cogs.processors.images",
@@ -40,6 +42,8 @@ COGS = [
     "cogs.processors.websites",
     # Router - message dispatcher (must load after processors)
     "cogs.router",
+    # Reactions - handles reaction-based actions
+    "cogs.reactions",
     # Commands
     "cogs.commands.admin",
     "cogs.commands.general",
@@ -63,6 +67,25 @@ async def load_cogs():
 async def on_ready():
     """Called when the bot is ready."""
     print(f'Techiee logged in as {bot.user}')
+
+
+@bot.event
+async def on_disconnect():
+    """Called when the bot disconnects. Clean up typing tasks."""
+    print("⚠️ Bot disconnecting, cleaning up...")
+    try:
+        from utils.typing import typing_manager
+        # Cancel all active typing tasks
+        for task in list(typing_manager._tasks.values()):
+            task.cancel()
+        typing_manager._tasks.clear()
+        typing_manager._counts.clear()
+        typing_manager._stop_events.clear()
+        typing_manager._locks.clear()
+        typing_manager._last_keep_alive.clear()
+        print("✅ Cleanup complete")
+    except Exception as e:
+        print(f"⚠️ Cleanup error: {e}")
 
 
 async def main():
