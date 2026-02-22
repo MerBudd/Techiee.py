@@ -48,7 +48,8 @@ class FileProcessor(commands.Cog):
             else:
                 file_types.append('Text/Generic')
         
-        print(f"New File Message FROM: {message.author.name} : {cleaned_text}")
+        from utils.helpers import log_new_message
+        log_new_message("File", message, cleaned_text)
         print(f"Processing {len(attachments)} File(s): {', '.join(file_types)}")
         
         # Get user info for system prompt
@@ -96,4 +97,3 @@ class FileProcessor(commands.Cog):
 async def setup(bot):
     """Setup function for loading the cog."""
     await bot.add_cog(FileProcessor(bot))
-

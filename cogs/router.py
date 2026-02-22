@@ -197,7 +197,8 @@ class Router(commands.Cog):
                             else:
                                 files.append(attachment)
                         
-                        print(f"New Attachment Message FROM: {message.author.name} : {enriched_text}", flush=True)
+                        from utils.helpers import log_new_message
+                        log_new_message("Attachment", message, enriched_text)
                         print(f"  Images: {len(images)}, Videos: {len(videos)}, Files: {len(files)}", flush=True)
                         
                         # Process by type priority: images > videos > files

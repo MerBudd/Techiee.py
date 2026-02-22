@@ -40,7 +40,8 @@ class VideoProcessor(commands.Cog):
         if reply_chain_context is None:
             reply_chain_context = []
         
-        print(f"New Video Message FROM: {message.author.name} : {cleaned_text}")
+        from utils.helpers import log_new_message
+        log_new_message("Video", message, cleaned_text)
         print(f"Processing {len(attachments)} Video(s)")
         
         # Get user info for system prompt

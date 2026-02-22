@@ -40,7 +40,8 @@ class ImageProcessor(commands.Cog):
         if reply_chain_context is None:
             reply_chain_context = []
         
-        print(f"New Image Message FROM: {message.author.name} : {cleaned_text}")
+        from utils.helpers import log_new_message
+        log_new_message("Image", message, cleaned_text)
         print(f"Processing {len(attachments)} Image(s)")
         
         # Get user info for system prompt
@@ -88,4 +89,3 @@ class ImageProcessor(commands.Cog):
 async def setup(bot):
     """Setup function for loading the cog."""
     await bot.add_cog(ImageProcessor(bot))
-

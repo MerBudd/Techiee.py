@@ -392,3 +392,26 @@ def convert_latex_to_discord(text):
     
     return result
 
+
+def log_new_message(message_type, message, text):
+    """Log a new message context-aware, hiding DM contents for privacy."""
+    import discord
+    from utils.gemini import tracked_threads
+    from utils.config_manager import dynamic_config
+    
+    channel_id = message.channel.id
+    if isinstance(message.channel, discord.DMChannel):
+        origin = "in DM"
+        log_text = "[DM Content Hidden]"
+    elif channel_id in tracked_threads:
+        origin = "in thread"
+        log_text = text
+    elif channel_id in dynamic_config.tracked_channels:
+        origin = "in tracked channel"
+        log_text = text
+    else:
+        origin = "with @mention"
+        log_text = text
+        
+    print(f"New {message_type} Message FROM: {message.author.name} ({origin}) : {log_text}", flush=True)
+

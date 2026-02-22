@@ -36,7 +36,8 @@ class TextProcessor(commands.Cog):
             reply_chain_context: Optional list of Content objects from reply chain
             media_parts: Optional list of Part objects (sticker/GIF/emoji images)
         """
-        print(f"New Text Message FROM: {message.author.name} : {cleaned_text}")
+        from utils.helpers import log_new_message
+        log_new_message("Text", message, cleaned_text)
         
         # Default to empty list if not provided
         if reply_chain_context is None:

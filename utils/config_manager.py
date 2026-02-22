@@ -55,8 +55,8 @@ class ConfigManager:
     def get_safety_settings(self):
         """Get the parsed safety settings from config or overrides."""
         saved = self.get("safety_settings")
-        if not saved:
-            return default_config.safety_settings
+        if not saved or isinstance(saved, list):
+            return default_config.safety_settings if not saved else saved
             
         # Parse from dicts to SafetySetting objects
         settings = []
@@ -72,7 +72,7 @@ class ConfigManager:
     def set_safety_settings(self, category_name: str, threshold_name: str):
         """Update a specific safety setting."""
         saved = self.get("safety_settings")
-        if not saved:
+        if not saved or isinstance(saved, list):
             # Map default to dict
             saved = {}
             for s in default_config.safety_settings:
