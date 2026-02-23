@@ -49,6 +49,7 @@ You can tweak all bot settings, including safety filters, model parameters, help
 - `/reset-settings`: Resets all AI settings (persona, thinking level, and loaded context) to their default values.
 - `/image`: Generates or edits images with support for multiple inputs and aspect ratios, using Nano Banana (requires paid API key).
 - `/conversation-summary`: Generates an AI summary of your conversation history.
+- `/admin-config`: Opens an interactive admin-only panel to modify global bot settings persistently (Admin only).
 - `/sync`: Syncs slash commands globally (Admin only).
 
 ---

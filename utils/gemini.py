@@ -1225,7 +1225,7 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
         # Build config with aspect ratio
         config_kwargs = {
             "response_modalities": ["Text", "Image"],
-            "safety_settings": safety_settings,
+            "safety_settings": dynamic_config.safety_settings,
         }
         
         # Add aspect ratio if specified

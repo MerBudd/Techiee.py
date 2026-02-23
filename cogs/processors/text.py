@@ -17,7 +17,7 @@ from utils.gemini import (
     get_history_key,
 )
 
-from config import max_history
+from utils.config_manager import dynamic_config
 
 
 class TextProcessor(commands.Cog):
@@ -63,7 +63,7 @@ class TextProcessor(commands.Cog):
         user_parts = [Part(text=cleaned_text)] + media_parts
         
         # Regular text conversation with history
-        if max_history == 0:
+        if dynamic_config.max_history == 0:
             # Even with no history, we can still use pending context and reply chain
             user_content = create_user_content(user_parts)
             contents = reply_chain_context + pending_ctx + [user_content]

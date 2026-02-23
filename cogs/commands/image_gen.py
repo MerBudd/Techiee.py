@@ -7,7 +7,7 @@ from discord.ext import commands
 import aiohttp
 from io import BytesIO
 
-from config import cooldowns
+from utils.config_manager import dynamic_config
 from utils.gemini import generate_or_edit_image
 
 
@@ -17,7 +17,7 @@ class ImageGen(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.checks.cooldown(1, cooldowns.get("image", 30))
+    @app_commands.checks.cooldown(1, dynamic_config.cooldowns.get("image", 30))
     @app_commands.command(name='image', description='Generate or edit images using AI with multiple inputs and aspect ratios.')
     @app_commands.describe(
         prompt='What to generate or how to edit the image(s)',

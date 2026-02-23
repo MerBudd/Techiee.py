@@ -5,7 +5,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import cooldowns
 from utils.config_manager import dynamic_config
 from utils.gemini import tracked_threads, message_history, get_history_key, pending_context
 
@@ -36,7 +35,7 @@ class General(commands.Cog):
         except Exception as e:
             await interaction.response.send_message("❗️ Error creating thread!")
     
-    @app_commands.checks.cooldown(1, cooldowns.get("forget", 5))
+    @app_commands.checks.cooldown(1, dynamic_config.cooldowns.get("forget", 5))
     @app_commands.command(name='forget', description='Clear your conversation history with Techiee in the current context (DM, thread, or channel).')
     async def forget(self, interaction: discord.Interaction):
         """Clear message history for the current context."""

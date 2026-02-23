@@ -5,7 +5,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import admin_user_ids
+from utils.config_manager import dynamic_config
 
 class Admin(commands.Cog):
     """Cog for admin-only commands."""
@@ -16,7 +16,7 @@ class Admin(commands.Cog):
     @app_commands.command(name='sync', description='Sync slash commands globally. Admin only.')
     async def sync(self, interaction: discord.Interaction):
         """Sync slash commands globally (admin only)."""
-        if interaction.user.id in admin_user_ids:
+        if interaction.user.id in dynamic_config.admin_user_ids:
             await interaction.response.defer(ephemeral=True)  # Defer since sync can take a moment
             
             try:

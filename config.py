@@ -104,8 +104,9 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 * `/settings` - Open the settings panel to customize thinking depth, persona, and load conversation context
 * `/reset-settings` - Reset all AI settings (persona, thinking level, context) to defaults
 * `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
-* `/conversation-summary` - Generates an AI summary of our current chat history
-* `/sync` - Sync slash commands globally (admin only)
+* `/conversation-summary` - Generates an AI summary of your message history
+* `/sync` - Syncs slash commands (Admin only)
+* `/admin-config` - Open the global configuration panel (Admin only)
 
 -# *Note:* I'm still under development, so I might not always get things right."""
 

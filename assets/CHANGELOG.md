@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.9.1-exp] - 2026-02-23 (Experimental)
+
+### Fixed
+
+- **Command Stability**: Resolved a `NameError` in the `/image` command (`safety_settings` undefined) and an error in the `/settings` panel (`max_history` undefined).
+- **Mention Perception**: Removed the restrictive regex in `clean_discord_message` that stripped Discord mentions. The bot now correctly "sees" raw user, channel, and role mentions in its message context for better conversational awareness.
+- **Dynamic Config Consistency**: Standardized all command cooldowns and history checks (across 11+ files) to use the `dynamic_config` system, ensuring global changes via `/admin-config` apply instantly to all bot operations.
+
+---
+
+## [2.9.0-exp] - 2026-02-22 (Experimental)
+
+### Added
+
+- **Dynamic Configuration System**: Introduced a new dynamic settings layer managed by `ConfigManager`. The bot now reads from `admin_config.json` for persistent overrides, allowing configuration changes without restarting.
+- **`/admin-config` Command**: A new interactive, admin-only command using Discord Views and Modals to globally configure models, AI parameters (temperature, tokens), system prompts, and toggle features like Google Search.
+- **Privacy-Aware Logging**: Implemented context-aware logging via `log_new_message` which automatically obscures the contents of DM messages from terminal logs while showing message origins (DM, thread, tracked channel, or mention).
+- **Improved Multimodal Persistence**: Fixed bugs where stickers, custom emojis, and GIFs were not correctly preserved in message history and `/context`. GIFs are now uploaded via the Files API for full temporal processing.
+
+### Changed
+
+- **Renamed Discord User ID config**: `discord_user_id` and `discord_admin_ids` is now `admin_user_ids`.
+- **Operational Stability**: Improved `on_disconnect` handling in `Techiee.py` to prevent unnecessary typing indicator resets during minor network drops.
+
+---
+
 ## [2.8.1] - 2026-02-22
 
 ### Added

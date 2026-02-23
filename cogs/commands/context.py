@@ -8,7 +8,6 @@ import aiohttp
 
 from google.genai.types import Part, Content
 
-from config import cooldowns
 from utils.config_manager import dynamic_config
 from utils.gemini import set_pending_context, tracked_threads
 
@@ -19,7 +18,7 @@ class Context(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.checks.cooldown(1, cooldowns.get("context", 7))
+    @app_commands.checks.cooldown(1, dynamic_config.cooldowns.get("context", 7))
     @app_commands.command(name='context', description='Load recent channel messages as context so Techiee can reference them.')
     @app_commands.describe(
         count='Number of messages to load (1-50, default 10)',

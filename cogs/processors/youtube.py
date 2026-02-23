@@ -14,7 +14,7 @@ from utils.gemini import (
     decrement_pending_context,
     get_history_key,
 )
-from config import max_history
+from utils.config_manager import dynamic_config
 
 
 class YouTubeProcessor(commands.Cog):
@@ -53,7 +53,7 @@ class YouTubeProcessor(commands.Cog):
             decrement_pending_context(history_key)
         
         # Get history if enabled (context-aware) and combine with reply chain and pending context
-        if max_history > 0:
+        if dynamic_config.max_history > 0:
             history = get_message_history_contents(message) + reply_chain_context + pending_ctx
         else:
             history = (reply_chain_context + pending_ctx) if (reply_chain_context or pending_ctx) else None
@@ -68,7 +68,7 @@ class YouTubeProcessor(commands.Cog):
         
         # Define history update callback
         async def update_history(response_text):
-            if max_history > 0 and user_parts is not None:
+            if dynamic_config.max_history > 0 and user_parts is not None:
                 user_content = create_user_content(user_parts)
                 update_message_history(message, user_content)
                 model_content = create_model_content(response_text)

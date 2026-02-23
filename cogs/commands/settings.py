@@ -5,7 +5,6 @@ import discord
 from discord import app_commands, ui
 from discord.ext import commands
 
-from config import cooldowns
 from utils.config_manager import dynamic_config
 from utils.gemini import (
     tracked_threads,
@@ -488,7 +487,7 @@ class Settings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @app_commands.checks.cooldown(1, cooldowns.get("settings", 5))
+    @app_commands.checks.cooldown(1, dynamic_config.cooldowns.get("settings", 5))
     @app_commands.command(name='settings', description='Open the settings panel to customize thinking depth, persona, and load conversation context.')
     async def settings(self, interaction: discord.Interaction):
         """Open the interactive settings menu."""
@@ -518,7 +517,7 @@ class Settings(commands.Cog):
         embed.add_field(name="🧠 Thinking Level", value=thinking.capitalize(), inline=True)
         embed.add_field(name="🎭 Persona", value=persona_display, inline=True)
         embed.add_field(name="📖 Loaded Context", value=context_display, inline=True)
-        embed.add_field(name="📊 History Limit", value=f"{max_history} messages", inline=True)
+        embed.add_field(name="📊 History Limit", value=f"{dynamic_config.max_history} messages", inline=True)
         embed.set_footer(text="Use the controls below to adjust settings")
         
         view = SettingsView(settings_key, scope_msg, user_id, interaction.channel)
