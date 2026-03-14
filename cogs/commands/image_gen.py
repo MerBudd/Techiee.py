@@ -79,12 +79,20 @@ class ImageGen(commands.Cog):
             # Get aspect ratio value
             ar_value = aspect_ratio.value if aspect_ratio else None
             
+            from cogs.commands.settings import get_settings_key_from_interaction
+            from utils.gemini import context_settings, default_settings
+            
+            settings_key, _, _ = get_settings_key_from_interaction(interaction)
+            current_settings = context_settings.get(settings_key, default_settings.copy())
+            image_model = current_settings.get("image_model", dynamic_config.default_image_model)
+            
             # Generate or edit image
             print(f"Image generation request from {interaction.user.name}: {prompt}")
             text_response, image_bytes, image_mime_type = await generate_or_edit_image(
                 prompt=prompt,
                 images=images if images else None,
-                aspect_ratio=ar_value
+                aspect_ratio=ar_value,
+                image_model=image_model
             )
             
             # Send the response

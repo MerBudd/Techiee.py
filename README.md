@@ -28,6 +28,7 @@ This is the Python version of Techiee. It has been completely rewritten to suppo
 - **📚 Context Loading**: Use `/context` or the Load Context button in `/settings` to add other users' messages to your history. Or, reply to a message and Techiee will add the reply chain to its context.
 - **🎨 Image Generation**: Generate or edit images with `/image`, using Nano Banana (requires paid API key).
 - **🔍 Google Search Grounding**: Support for real-time web search (requires paid API key, disabled by default).
+- **🔄 Model Selection**: Swap between different Gemini models on the fly using the `/model` command or `/settings` UI.
 
 >[!NOTE]
 > Settings (thinking level, persona), context and message history are isolated (in each context - DMs, different threads, etc.) to prevent "slipping" between different conversations.
@@ -45,9 +46,10 @@ You can tweak all bot settings, including safety filters, model parameters, help
 - `/create-thread <name>`: Starts a new thread where Techiee will respond to every message.
 - `/persona <description>`: Sets a custom personality for Techiee. Use `/persona` or `/persona default` to reset.
 - `/forget`: Clears your message history with Techiee for the current context.
-- `/settings`: Interactive menu to view and adjust AI settings (thinking, persona, and context loading with custom options).
-- `/reset-settings`: Resets all AI settings (persona, thinking level, and loaded context) to their default values.
-- `/image`: Generates or edits images with support for multiple inputs and aspect ratios, using Nano Banana (requires paid API key).
+- `/settings`: Interactive menu to view and adjust AI settings (models, thinking, persona, and context loading with custom options).
+- `/reset-settings`: Resets all AI settings (models, persona, thinking level, and loaded context) to their default values.
+- `/model [text_model] [image_model]`: Direct command to swap models for the current conversation context.
+- `/image`: Generates or edits images with support for multiple inputs and aspect ratios, using Nano Banana models (requires paid API key).
 - `/conversation-summary`: Generates an AI summary of your conversation history.
 - `/admin-config`: Opens an interactive admin-only panel to modify global bot settings persistently (Admin only).
 - `/sync`: Syncs slash commands globally (Admin only).

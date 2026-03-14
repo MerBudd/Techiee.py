@@ -40,6 +40,12 @@ class ConfigManager:
             # or just rely on a default string.
             pass
             
+        # Dynamically determine default models as fallbacks if no override exists
+        if key == "default_text_model":
+            return next(iter(default_config.text_models))
+        elif key == "default_image_model":
+            return next(iter(default_config.image_models))
+            
         return getattr(default_config, key, None)
 
     def set(self, key, value):
@@ -83,8 +89,8 @@ class ConfigManager:
         self.set("safety_settings", saved)
 
     def __getattr__(self, key):
-        """Allow dot notation access like dynamic_config.gemini_model"""
-        if hasattr(default_config, key):
+        """Allow dot notation access like dynamic_config.default_text_model"""
+        if hasattr(default_config, key) or key in ("default_text_model", "default_image_model"):
             # Special getters
             if key == "safety_settings":
                 return self.get_safety_settings()

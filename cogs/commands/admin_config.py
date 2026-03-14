@@ -8,19 +8,32 @@ def is_admin(interaction: discord.Interaction):
     return interaction.user.id in dynamic_config.admin_user_ids
 
 class ModelsModal(ui.Modal, title="Configure Models"):
-    gemini_model = ui.TextInput(label="Text Generation Model")
-    image_model = ui.TextInput(label="Image Generation Model")
+    text_model = ui.TextInput(label="Default Text Model (API Name)", required=False, placeholder="gemini-3.1-flash-lite-preview")
+    image_model = ui.TextInput(label="Default Image Model (API Name)", required=False, placeholder="gemini-3.1-flash-image-preview")
     aspect_ratio = ui.TextInput(label="Default Aspect Ratio", placeholder="1:1, 16:9, etc.")
 
     def __init__(self):
         super().__init__()
-        self.gemini_model.default = str(dynamic_config.gemini_model)
-        self.image_model.default = str(dynamic_config.image_model)
+        self.text_model.default = str(dynamic_config.default_text_model)
+        self.image_model.default = str(dynamic_config.default_image_model)
         self.aspect_ratio.default = str(dynamic_config.default_aspect_ratio)
 
     async def on_submit(self, interaction: discord.Interaction):
-        dynamic_config.set("gemini_model", self.gemini_model.value)
-        dynamic_config.set("image_model", self.image_model.value)
+        t_val = self.text_model.value.strip()
+        i_val = self.image_model.value.strip()
+        
+        if t_val:
+            dynamic_config.set("default_text_model", t_val)
+        elif "default_text_model" in dynamic_config.overrides:
+            del dynamic_config.overrides["default_text_model"]
+            dynamic_config.save()
+            
+        if i_val:
+            dynamic_config.set("default_image_model", i_val)
+        elif "default_image_model" in dynamic_config.overrides:
+            del dynamic_config.overrides["default_image_model"]
+            dynamic_config.save()
+            
         dynamic_config.set("default_aspect_ratio", self.aspect_ratio.value)
         await interaction.response.send_message("✅ Models updated successfully.", ephemeral=True)
 

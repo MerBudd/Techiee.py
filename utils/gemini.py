@@ -161,7 +161,9 @@ context_settings = {}
 
 # Default settings
 default_settings = {
-    "thinking_level": "minimal",  # minimal, low, medium, high
+    "thinking_level": dynamic_config.default_thinking_level,  # minimal, low, medium, high
+    "text_model": dynamic_config.default_text_model,
+    "image_model": dynamic_config.default_image_model,
     "persona": None  # Custom persona, None means use default system instruction
 }
 
@@ -385,7 +387,12 @@ def get_effective_system_instruction(settings, user_display_name=None, user_user
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
     """
-    base_instruction = get_system_instruction(user_display_name, user_username)
+    from utils.config_manager import dynamic_config
+    
+    text_model_id = settings.get("text_model", dynamic_config.default_text_model)
+    model_name = dynamic_config.text_models.get(text_model_id, text_model_id)
+    
+    base_instruction = get_system_instruction(user_display_name, user_username, model_name)
     if settings.get("persona"):
         return f"{settings['persona']}\n\n{base_instruction}"
     return base_instruction
@@ -540,7 +547,7 @@ async def generate_response_with_text(contents, settings, user_display_name=None
         # Use execute_with_retry for automatic key rotation on 429 errors
         response = await execute_with_retry(
             lambda: api_key_manager.client.models.generate_content(
-                model=dynamic_config.gemini_model,
+                model=settings.get("text_model", dynamic_config.default_text_model),
                 contents=contents,
                 config=config
             )
@@ -613,7 +620,7 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             # Use execute_with_retry for automatic key rotation on 429 errors
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=dynamic_config.gemini_model,
+                    model=settings.get("text_model", dynamic_config.default_text_model),
                     contents=contents,
                     config=config
                 )
@@ -706,7 +713,7 @@ async def process_image_attachments(attachments, user_text, settings, history=No
             
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=dynamic_config.gemini_model,
+                    model=settings.get("text_model", dynamic_config.default_text_model),
                     contents=contents,
                     config=config
                 )
@@ -793,7 +800,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             # Use execute_with_retry for automatic key rotation on 429 errors
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=dynamic_config.gemini_model,
+                    model=settings.get("text_model", dynamic_config.default_text_model),
                     contents=contents,
                     config=config
                 )
@@ -892,7 +899,7 @@ async def process_video_attachments(attachments, user_text, settings, history=No
             
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=dynamic_config.gemini_model,
+                    model=settings.get("text_model", dynamic_config.default_text_model),
                     contents=contents,
                     config=config
                 )
@@ -974,7 +981,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
             # Use execute_with_retry for automatic key rotation on 429 errors
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=dynamic_config.gemini_model,
+                    model=settings.get("text_model", dynamic_config.default_text_model),
                     contents=contents,
                     config=config
                 )
@@ -1067,7 +1074,7 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
             
             response = await execute_with_retry(
                 lambda: api_key_manager.client.models.generate_content(
-                    model=dynamic_config.gemini_model,
+                    model=settings.get("text_model", dynamic_config.default_text_model),
                     contents=contents,
                     config=config
                 )
@@ -1129,7 +1136,7 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
         # Use execute_with_retry for automatic key rotation on 429 errors
         response = await execute_with_retry(
             lambda: api_key_manager.client.models.generate_content(
-                model=gemini_model,
+                model=settings.get("text_model", dynamic_config.default_text_model),
                 contents=contents,
                 config=config
             )
@@ -1183,7 +1190,7 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         # Use execute_with_retry for automatic key rotation on 429 errors
         response = await execute_with_retry(
             lambda: api_key_manager.client.models.generate_content(
-                model=gemini_model,
+                model=settings.get("text_model", dynamic_config.default_text_model),
                 contents=contents,
                 config=config
             )
@@ -1195,7 +1202,7 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         return ("❌ Exception: " + str(e), None)
 
 
-async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
+async def generate_or_edit_image(prompt, images=None, aspect_ratio=None, image_model=None):
     """Generate or edit images using Nano Banana (gemini-2.5-flash-image).
     
     Args:
@@ -1245,7 +1252,7 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None):
             try:
                 response = await asyncio.to_thread(
                     lambda: api_key_manager.client.models.generate_content(
-                        model=dynamic_config.image_model,
+                        model=image_model or dynamic_config.default_image_model,
                         contents=contents,
                         config=config
                     )

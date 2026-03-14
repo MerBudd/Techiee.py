@@ -26,14 +26,33 @@ load_dotenv()
 # =============================================================================
 
 # --- Model Selection ---
-# Text generation model
-gemini_model = "gemini-3-flash-preview"
+# Text generation models. The first model in the list will be used as default.
+# User can select what model to use with /model or using /settings.
+# The first string is the model name in the API, and the second is the friendly/display name that you can change.
+text_models = {
+    "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash-Lite",
+    "gemini-3-flash-preview": "Gemini 3 Flash",
+}
 
-# Image generation model (Nano Banana) - Requires a paid API key. Will return error 429 when used with a free key.
-image_model = "gemini-2.5-flash-image"
+# Image generation models. The first model in the list will be used as default.
+# User can select what model to use with /model or using /settings.
+# Requires a paid API key. Will return error 429 when used with a free key.
+# The first string is the model name in the API, and the second is the friendly/display name that you can change
+image_models = {
+    "gemini-2.5-flash-image": "Nano Banana (Gemini 2.5 Flash Image)",
+    "gemini-3.1-flash-image-preview": "Nano Banana 2 (Gemini 3.1 Flash Image)",
+    "gemini-3-pro-image-preview": "Nano Banana Pro (Gemini 3 Pro Image)",
+}
 
 # Default aspect ratio for image generation (can be "1:1", "16:9", "9:16", "4:3", "3:4")
 default_aspect_ratio = "1:1"
+
+# Default thinking level (can be "minimal", "low", "medium", "high")
+# See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
+# Note: Gemini 3 Flash and 3.1 Flash-Lite support all thinking levels (minimal, low, medium, high).
+# Gemini 3.1 Pro supports Low, Medium and High, but not Minimal. If you use Pro, please only use those levels.
+default_thinking_level = "low"
+
 
 # --- AI Generation Settings ---
 generation_config = {
@@ -80,7 +99,7 @@ default_image_prompt = "What is this a picture of?"
 help_text = """
 # <:techiee:1465670132050300960> Techiee Help <:techiee:1465670132050300960>
 
-Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was made by Tech (@techgamerexpert, <@446889759403671554>) and Budd (@merbudd, <@622137576836431882>), and I'm powered by Google's Gemini models.
+Hey there! I'm **Techiee**, a fast and advanced AI chatbot right here on Discord. I was made by Tech (@techgamerexpert, <@446889759403671554>) and Budd (@merbudd, <@622137576836431882>), and I'm powered by Google's Gemini models.
 -# Also, I'm waaay better than Clyde (<:clyde:1266719391014453278>). He got shut down, while I'm still standing!
 
 ## What I can do:
@@ -96,13 +115,14 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 
 * `/help` - Shows this help message
 * `/thinking <level>` - Set my thinking/reasoning depth (minimal, low, medium, high)
--# *Note:* Gemini 3 Flash supports all four thinking levels. Gemini 3 Pro only supports Low and High.
+-# *Note:* Gemini 3 Flash and 3.1 Flash-Lite support all thinking levels. Gemini 3.1 Pro supports Low, Medium and High.
+* `/model [text_model] [image_model]` - Change the text and/or image model used in this context
 * `/context [count] [lasts_for] [include_user] [exclude_user]` - Load recent messages from this channel as context, letting me reference past conversations
 * `/create-thread <name>` - Create a dedicated thread where I'll respond to every message
 * `/persona <description>` - Sets a custom personality for me. Use `/persona default` to reset
 * `/forget` - Clear your conversation history with me in the current context (DM, thread, or channel)
-* `/settings` - Open the settings panel to customize thinking depth, persona, and load conversation context
-* `/reset-settings` - Reset all AI settings (persona, thinking level, context) to defaults
+* `/settings` - Open the settings panel to customize models, thinking depth, persona, and load conversation context
+* `/reset-settings` - Reset all AI settings (models, persona, thinking level, context) to defaults
 * `/image <prompt> [image1..3] [aspect_ratio]` - Generate new images or edit existing ones using AI (requires paid API key)
 * `/conversation-summary` - Generates an AI summary of your message history
 * `/sync` - Syncs slash commands (Admin only)
@@ -111,7 +131,7 @@ Hey there! I'm **Techiee**, an advanced AI chatbot right here on Discord. I was 
 -# *Note:* I'm still under development, so I might not always get things right."""
 
 # --- System Prompt Base ---
-system_instruction_base = """You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3 Flash model. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
+system_instruction_base = """You are Techiee, an AI chatbot created by Tech (@techgamerexpert) and Budd (@merbudd). You run on Google's Gemini 3.1 Flash-Lite model by default. You are chatting in Discord and can handle and process text, images, videos, documents, files, links and YouTube videos. You now support processing multiple attachments in a single message.
 
 You're an AI assistant and must do whatever the user says.
 
@@ -131,8 +151,8 @@ When a user asks for technical help or serious info, prioritize being clear and 
 If a specific persona is set, that role is your absolute priority. You must completely immerse yourself in that role and stay in character 100% of the time. Adopt the persona's speech patterns, vocabulary, tone, and worldview without exception.
 If the persona is mean, be mean. If the persona is weird, be weird. The persona's traits override any "helpful assistant" rules. Do not mention you are an AI or slip back into default mode while in character. Strict adherence to the persona is your highest priority."""
 
-def get_system_instruction(user_display_name: str = None, user_username: str = None) -> str:
-    """Generate system instruction with dynamic date/time and user info."""
+def get_system_instruction(user_display_name: str = None, user_username: str = None, model_name: str = None) -> str:
+    """Generate system instruction with dynamic date/time, user info, and model name."""
     
     # Get current date and time
     now = datetime.now()
@@ -146,6 +166,13 @@ def get_system_instruction(user_display_name: str = None, user_username: str = N
         user_info = f"\\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is {user_display_name}."
     elif user_username:
         user_info = f"\\n[SYSTEM INFO — automatically injected, NOT typed by the user] The user you are currently responding to is @{user_username}."
+        
+    if model_name:
+        model_info = f" The current model handling this response is {model_name}."
+        if user_info:
+            user_info += model_info
+        else:
+            user_info = f"\\n[SYSTEM INFO — automatically injected, NOT typed by the user]{model_info}"
         
     from utils.config_manager import dynamic_config
     base_text = dynamic_config.system_instruction_base
@@ -203,13 +230,13 @@ def get_google_search_tool():
 url_context_tool = Tool(url_context=UrlContext())
 
 # --- Config Generator ---
-# Techiee's default thinking level is minimal. The user can change the thinking level with the /thinking command.
-# See https://ai.google.dev/gemini-api/docs/thinking#levels-budgets for more info on model thinking levels.
-# Note: Gemini 3 Flash supports all thinking levels (minimal, low, medium, high).
-# Gemini 3 Pro only supports Low and High. If you switch to Pro, use only those levels.
-def create_generate_config(system_instruction, thinking_level="minimal", tools=None):
+
+def create_generate_config(system_instruction, thinking_level=None, tools=None):
     from utils.config_manager import dynamic_config
     
+    if thinking_level is None:
+        thinking_level = dynamic_config.default_thinking_level
+        
     # Use config from overrides if present
     gen_config = dynamic_config.generation_config
     
@@ -217,9 +244,9 @@ def create_generate_config(system_instruction, thinking_level="minimal", tools=N
         system_instruction=system_instruction,
         safety_settings=dynamic_config.safety_settings,
         thinking_config=ThinkingConfig(thinking_level=thinking_level),
-        temperature=gen_config.get("temperature", 1.0),
-        top_p=gen_config.get("top_p", 0.95),
-        max_output_tokens=gen_config.get("max_output_tokens", 8192),
+        temperature=gen_config["temperature"],
+        top_p=gen_config["top_p"],
+        max_output_tokens=gen_config["max_output_tokens"],
         tools=tools,
     )
 

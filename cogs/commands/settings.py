@@ -89,6 +89,59 @@ class ThinkingSelect(ui.Select):
         await interaction.channel.send(f"🧠 Thinking level set to **{self.values[0]}** for {scope_msg}.")
 
 
+class TextModelSelect(ui.Select):
+    """Dropdown for selecting AI text model."""
+    
+    def __init__(self, current_model: str):
+        options = []
+        found = False
+        for m_id, m_name in dynamic_config.text_models.items():
+            is_default = (current_model == m_id)
+            if is_default: found = True
+            options.append(discord.SelectOption(label=m_name, value=m_id, default=is_default, emoji="💬"))
+            
+        if not found and current_model:
+            options.append(discord.SelectOption(label=current_model, value=current_model, default=True, emoji="💬"))
+
+        super().__init__(placeholder="Select text model...", options=options, custom_id="text_model_select")
+    
+    async def callback(self, interaction: discord.Interaction):
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
+        current_settings = context_settings.get(settings_key, default_settings.copy())
+        current_settings["text_model"] = self.values[0]
+        set_settings_for_context(settings_key, current_settings)
+        
+        await interaction.response.defer()
+        m_name = dynamic_config.text_models.get(self.values[0], self.values[0])
+        await interaction.channel.send(f"💬 Text model set to **{m_name}** for {scope_msg}.")
+
+
+class ImageModelSelect(ui.Select):
+    """Dropdown for selecting AI image model."""
+    
+    def __init__(self, current_model: str):
+        options = []
+        found = False
+        for m_id, m_name in dynamic_config.image_models.items():
+            is_default = (current_model == m_id)
+            if is_default: found = True
+            options.append(discord.SelectOption(label=m_name, value=m_id, default=is_default, emoji="🖼️"))
+            
+        if not found and current_model:
+            options.append(discord.SelectOption(label=current_model, value=current_model, default=True, emoji="🖼️"))
+
+        super().__init__(placeholder="Select image model...", options=options, custom_id="image_model_select")
+    
+    async def callback(self, interaction: discord.Interaction):
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
+        current_settings = context_settings.get(settings_key, default_settings.copy())
+        current_settings["image_model"] = self.values[0]
+        set_settings_for_context(settings_key, current_settings)
+        
+        await interaction.response.defer()
+        m_name = dynamic_config.image_models.get(self.values[0], self.values[0])
+        await interaction.channel.send(f"🖼️ Image model set to **{m_name}** for {scope_msg}.")
+
 class PersonaModal(ui.Modal, title="Set Custom Persona"):
     """Modal for setting a custom persona."""
     
@@ -458,25 +511,50 @@ class SettingsView(ui.View):
         super().__init__(timeout=timeout)
         
         current_settings = context_settings.get(settings_key, default_settings.copy())
-        current_thinking = current_settings.get("thinking_level", "minimal")
+        current_thinking = current_settings.get("thinking_level", dynamic_config.default_thinking_level)
+        current_text = current_settings.get("text_model", dynamic_config.default_text_model)
+        current_image = current_settings.get("image_model", dynamic_config.default_image_model)
         
-        # Add the thinking dropdown
-        self.add_item(ThinkingSelect(current_thinking))
+        # Add the dropdowns
+        thinking_sel = ThinkingSelect(current_thinking)
+        thinking_sel.row = 0
+        self.add_item(thinking_sel)
         
-        # Row 1: Help & Context & Thread
-        self.add_item(HelpButton())
+        text_sel = TextModelSelect(current_text)
+        text_sel.row = 1
+        self.add_item(text_sel)
         
-        # Add context button if we have channel (settings_key serves as context_key)
+        image_sel = ImageModelSelect(current_image)
+        image_sel.row = 2
+        self.add_item(image_sel)
+        
+        # Row 3: Help & Context & Thread
+        btn_help = HelpButton()
+        btn_help.row = 3
+        self.add_item(btn_help)
+        
         if channel:
             has_context = settings_key in pending_context
-            self.add_item(ContextButton(settings_key, channel, has_context))
+            btn_context = ContextButton(settings_key, channel, has_context)
+            btn_context.row = 3
+            self.add_item(btn_context)
             
-        self.add_item(CreateThreadButton())
+        btn_thread = CreateThreadButton()
+        btn_thread.row = 3
+        self.add_item(btn_thread)
         
-        # Row 2: Persona & Forget & Reset
-        self.add_item(PersonaButton(settings_key, scope_msg))
-        self.add_item(ForgetButton(settings_key, scope_msg))
-        self.add_item(ResetButton(settings_key, scope_msg))
+        # Row 4: Persona & Forget & Reset
+        btn_persona = PersonaButton(settings_key, scope_msg)
+        btn_persona.row = 4
+        self.add_item(btn_persona)
+        
+        btn_forget = ForgetButton(settings_key, scope_msg)
+        btn_forget.row = 4
+        self.add_item(btn_forget)
+        
+        btn_reset = ResetButton(settings_key, scope_msg)
+        btn_reset.row = 4
+        self.add_item(btn_reset)
 
 
 
@@ -496,7 +574,13 @@ class Settings(commands.Cog):
         user_id = interaction.user.id
         
         # Build current settings summary
-        thinking = current_settings.get("thinking_level", "minimal")
+        thinking = current_settings.get("thinking_level", dynamic_config.default_thinking_level)
+        text_mod = current_settings.get("text_model", dynamic_config.default_text_model)
+        img_mod = current_settings.get("image_model", dynamic_config.default_image_model)
+        
+        text_mod_display = dynamic_config.text_models.get(text_mod, text_mod)
+        img_mod_display = dynamic_config.image_models.get(img_mod, img_mod)
+        
         persona = current_settings.get("persona")
         persona_display = f'"{persona[:50]}..."' if persona and len(persona) > 50 else (f'"{persona}"' if persona else "Default")
         
@@ -514,10 +598,12 @@ class Settings(commands.Cog):
             description=f"Settings for **{scope_msg}**",
             color=discord.Color.blue()
         )
-        embed.add_field(name="🧠 Thinking Level", value=thinking.capitalize(), inline=True)
+        embed.add_field(name="🧠 Thinking", value=thinking.capitalize(), inline=True)
+        embed.add_field(name="💬 Text Model", value=text_mod_display, inline=True)
+        embed.add_field(name="🖼️ Image Model", value=img_mod_display, inline=True)
         embed.add_field(name="🎭 Persona", value=persona_display, inline=True)
         embed.add_field(name="📖 Loaded Context", value=context_display, inline=True)
-        embed.add_field(name="📊 History Limit", value=f"{dynamic_config.max_history} messages", inline=True)
+        embed.add_field(name="📊 History Limit", value=f"{dynamic_config.max_history} msgs", inline=True)
         embed.set_footer(text="Use the controls below to adjust settings")
         
         view = SettingsView(settings_key, scope_msg, user_id, interaction.channel)
@@ -580,10 +666,77 @@ class Settings(commands.Cog):
         
         await interaction.response.send_message(
             f"🔄 All settings reset to default for {scope_msg}.\n"
-            f"• Thinking level: minimal\n"
+            f"• Thinking level: {dynamic_config.default_thinking_level}\n"
+            f"• Text Model: Default\n"
+            f"• Image Model: Default\n"
             f"• Persona: default\n"
             f"• Loaded context: cleared"
         )
+    
+    @app_commands.command(name='model', description='Change text and image generation models.')
+    async def model(
+        self, 
+        interaction: discord.Interaction, 
+        text_model: str = None, 
+        image_model: str = None
+    ):
+        """Set the active models for text or image generation."""
+        await interaction.response.defer()
+        
+        settings_key, scope_msg, _ = get_settings_key_from_interaction(interaction)
+        current_settings = context_settings.get(settings_key, default_settings.copy())
+        
+        updates = []
+        if text_model:
+            match = None
+            for k, v in dynamic_config.text_models.items():
+                if text_model in (k, v):
+                    match = k
+                    break
+            if match:
+                current_settings["text_model"] = match
+                updates.append(f"💬 Text model to **{dynamic_config.text_models[match]}**")
+            else:
+                await interaction.followup.send(f"❌ Unknown text model: {text_model}")
+                return
+                
+        if image_model:
+            match = None
+            for k, v in dynamic_config.image_models.items():
+                if image_model in (k, v):
+                    match = k
+                    break
+            if match:
+                current_settings["image_model"] = match
+                updates.append(f"🖼️ Image model to **{dynamic_config.image_models[match]}**")
+            else:
+                await interaction.followup.send(f"❌ Unknown image model: {image_model}")
+                return
+                
+        if not updates:
+            await interaction.followup.send("⚠️ You must specify at least one model to change.")
+            return
+            
+        set_settings_for_context(settings_key, current_settings)
+        await interaction.followup.send(f"✅ Model settings updated for {scope_msg}:\n" + "\n".join(updates))
+
+    @model.autocomplete('text_model')
+    async def model_text_autocomplete(self, interaction: discord.Interaction, current: str):
+        choices = [
+            app_commands.Choice(name=name, value=key)
+            for key, name in dynamic_config.text_models.items()
+            if current.lower() in name.lower() or current.lower() in key.lower()
+        ]
+        return choices[:25]
+        
+    @model.autocomplete('image_model')
+    async def model_image_autocomplete(self, interaction: discord.Interaction, current: str):
+        choices = [
+            app_commands.Choice(name=name, value=key)
+            for key, name in dynamic_config.image_models.items()
+            if current.lower() in name.lower() or current.lower() in key.lower()
+        ]
+        return choices[:25]
     
     @app_commands.command(name='conversation-summary', description='Get an AI-generated summary of the current conversation.')
     async def conversation_summary(self, interaction: discord.Interaction):
