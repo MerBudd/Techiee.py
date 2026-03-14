@@ -95,10 +95,12 @@ class TextModelSelect(ui.Select):
     def __init__(self, current_model: str):
         options = []
         found = False
-        for m_id, m_name in dynamic_config.text_models.items():
+        for m_id, m_data in dynamic_config.text_models.items():
+            m_name = m_data["name"]
+            m_desc = m_data["description"]
             is_default = (current_model == m_id)
             if is_default: found = True
-            options.append(discord.SelectOption(label=m_name, value=m_id, default=is_default, emoji="💬"))
+            options.append(discord.SelectOption(label=m_name, value=m_id, description=m_desc, default=is_default, emoji="💬"))
             
         if not found and current_model:
             options.append(discord.SelectOption(label=current_model, value=current_model, default=True, emoji="💬"))
@@ -112,7 +114,8 @@ class TextModelSelect(ui.Select):
         set_settings_for_context(settings_key, current_settings)
         
         await interaction.response.defer()
-        m_name = dynamic_config.text_models.get(self.values[0], self.values[0])
+        m_data = dynamic_config.text_models.get(self.values[0])
+        m_name = m_data["name"] if m_data else self.values[0]
         await interaction.channel.send(f"💬 Text model set to **{m_name}** for {scope_msg}.")
 
 
@@ -122,10 +125,12 @@ class ImageModelSelect(ui.Select):
     def __init__(self, current_model: str):
         options = []
         found = False
-        for m_id, m_name in dynamic_config.image_models.items():
+        for m_id, m_data in dynamic_config.image_models.items():
+            m_name = m_data["name"]
+            m_desc = m_data["description"]
             is_default = (current_model == m_id)
             if is_default: found = True
-            options.append(discord.SelectOption(label=m_name, value=m_id, default=is_default, emoji="🖼️"))
+            options.append(discord.SelectOption(label=m_name, value=m_id, description=m_desc, default=is_default, emoji="🖼️"))
             
         if not found and current_model:
             options.append(discord.SelectOption(label=current_model, value=current_model, default=True, emoji="🖼️"))
@@ -139,7 +144,8 @@ class ImageModelSelect(ui.Select):
         set_settings_for_context(settings_key, current_settings)
         
         await interaction.response.defer()
-        m_name = dynamic_config.image_models.get(self.values[0], self.values[0])
+        m_data = dynamic_config.image_models.get(self.values[0])
+        m_name = m_data["name"] if m_data else self.values[0]
         await interaction.channel.send(f"🖼️ Image model set to **{m_name}** for {scope_msg}.")
 
 class PersonaModal(ui.Modal, title="Set Custom Persona"):
@@ -516,17 +522,17 @@ class SettingsView(ui.View):
         current_image = current_settings.get("image_model", dynamic_config.default_image_model)
         
         # Add the dropdowns
-        thinking_sel = ThinkingSelect(current_thinking)
-        thinking_sel.row = 0
-        self.add_item(thinking_sel)
-        
         text_sel = TextModelSelect(current_text)
-        text_sel.row = 1
+        text_sel.row = 0
         self.add_item(text_sel)
         
         image_sel = ImageModelSelect(current_image)
-        image_sel.row = 2
+        image_sel.row = 1
         self.add_item(image_sel)
+
+        thinking_sel = ThinkingSelect(current_thinking)
+        thinking_sel.row = 2
+        self.add_item(thinking_sel)
         
         # Row 3: Help & Context & Thread
         btn_help = HelpButton()
@@ -578,8 +584,11 @@ class Settings(commands.Cog):
         text_mod = current_settings.get("text_model", dynamic_config.default_text_model)
         img_mod = current_settings.get("image_model", dynamic_config.default_image_model)
         
-        text_mod_display = dynamic_config.text_models.get(text_mod, text_mod)
-        img_mod_display = dynamic_config.image_models.get(img_mod, img_mod)
+        text_mod_data = dynamic_config.text_models.get(text_mod)
+        text_mod_display = text_mod_data["name"] if text_mod_data else text_mod
+        
+        img_mod_data = dynamic_config.image_models.get(img_mod)
+        img_mod_display = img_mod_data["name"] if img_mod_data else img_mod
         
         persona = current_settings.get("persona")
         persona_display = f'"{persona[:50]}..."' if persona and len(persona) > 50 else (f'"{persona}"' if persona else "Default")
@@ -690,12 +699,12 @@ class Settings(commands.Cog):
         if text_model:
             match = None
             for k, v in dynamic_config.text_models.items():
-                if text_model in (k, v):
+                if text_model == k or text_model == v["name"]:
                     match = k
                     break
             if match:
                 current_settings["text_model"] = match
-                updates.append(f"💬 Text model to **{dynamic_config.text_models[match]}**")
+                updates.append(f"💬 Text model to **{dynamic_config.text_models[match]['name']}**")
             else:
                 await interaction.followup.send(f"❌ Unknown text model: {text_model}")
                 return
@@ -703,12 +712,12 @@ class Settings(commands.Cog):
         if image_model:
             match = None
             for k, v in dynamic_config.image_models.items():
-                if image_model in (k, v):
+                if image_model == k or image_model == v["name"]:
                     match = k
                     break
             if match:
                 current_settings["image_model"] = match
-                updates.append(f"🖼️ Image model to **{dynamic_config.image_models[match]}**")
+                updates.append(f"🖼️ Image model to **{dynamic_config.image_models[match]['name']}**")
             else:
                 await interaction.followup.send(f"❌ Unknown image model: {image_model}")
                 return
@@ -723,18 +732,18 @@ class Settings(commands.Cog):
     @model.autocomplete('text_model')
     async def model_text_autocomplete(self, interaction: discord.Interaction, current: str):
         choices = [
-            app_commands.Choice(name=name, value=key)
-            for key, name in dynamic_config.text_models.items()
-            if current.lower() in name.lower() or current.lower() in key.lower()
+            app_commands.Choice(name=data["name"], value=key)
+            for key, data in dynamic_config.text_models.items()
+            if current.lower() in data["name"].lower() or current.lower() in key.lower()
         ]
         return choices[:25]
         
     @model.autocomplete('image_model')
     async def model_image_autocomplete(self, interaction: discord.Interaction, current: str):
         choices = [
-            app_commands.Choice(name=name, value=key)
-            for key, name in dynamic_config.image_models.items()
-            if current.lower() in name.lower() or current.lower() in key.lower()
+            app_commands.Choice(name=data["name"], value=key)
+            for key, data in dynamic_config.image_models.items()
+            if current.lower() in data["name"].lower() or current.lower() in key.lower()
         ]
         return choices[:25]
     

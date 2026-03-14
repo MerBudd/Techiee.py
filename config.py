@@ -28,20 +28,33 @@ load_dotenv()
 # --- Model Selection ---
 # Text generation models. The first model in the list will be used as default.
 # User can select what model to use with /model or using /settings.
-# The first string is the model name in the API, and the second is the friendly/display name that you can change.
 text_models = {
-    "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash-Lite",
-    "gemini-3-flash-preview": "Gemini 3 Flash",
+    "gemini-3.1-flash-lite-preview": {
+        "name": "Gemini 3.1 Flash-Lite (Fast)",
+        "description": "Blazingly fast and efficient, perfect for quick chats and simple tasks."
+    },
+    "gemini-3-flash-preview": {
+        "name": "Gemini 3 Flash (Advanced)",
+        "description": "More powerful reasoning while staying fast. Good for complex logic."
+    },
 }
 
 # Image generation models. The first model in the list will be used as default.
 # User can select what model to use with /model or using /settings.
 # Requires a paid API key. Will return error 429 when used with a free key.
-# The first string is the model name in the API, and the second is the friendly/display name that you can change
 image_models = {
-    "gemini-2.5-flash-image": "Nano Banana (Gemini 2.5 Flash Image)",
-    "gemini-3.1-flash-image-preview": "Nano Banana 2 (Gemini 3.1 Flash Image)",
-    "gemini-3-pro-image-preview": "Nano Banana Pro (Gemini 3 Pro Image)",
+    "gemini-3.1-flash-image-preview": {
+        "name": "Nano Banana 2 (Fast)",
+        "description": "Quickly generates high-quality images. Good for most artistic needs."
+    },
+    "gemini-3-pro-image-preview": {
+        "name": "Nano Banana Pro (Elite)",
+        "description": "Highest quality and most detailed images. Best for complex prompts."
+    },
+    "gemini-2.5-flash-image": {
+        "name": "Nano Banana (Old)",
+        "description": "Older model, lower quality images."
+    },
 }
 
 # Default aspect ratio for image generation (can be "1:1", "16:9", "9:16", "4:3", "3:4")
