@@ -45,15 +45,15 @@ text_models = {
 image_models = {
     "gemini-3.1-flash-image-preview": {
         "name": "Nano Banana 2 (Fast)",
-        "description": "Quickly generates high-quality images. Good for most artistic needs."
+        "description": "Quickly generates high-quality images. Good for most needs."
     },
     "gemini-3-pro-image-preview": {
-        "name": "Nano Banana Pro (Elite)",
+        "name": "Nano Banana Pro (Best)",
         "description": "Highest quality and most detailed images. Best for complex prompts."
     },
     "gemini-2.5-flash-image": {
-        "name": "Nano Banana (Old)",
-        "description": "Older model, lower quality images."
+        "name": "Nano Banana (Old, faster)",
+        "description": "Older model, faster generation but with lower quality images."
     },
 }
 

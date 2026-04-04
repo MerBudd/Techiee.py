@@ -1222,8 +1222,6 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None, image_m
         # Add input images first if provided
         if images:
             for img_bytes, mime_type in images:
-                import base64
-                b64_data = base64.b64encode(img_bytes).decode('utf-8')
                 contents.append(Part.from_bytes(data=img_bytes, mime_type=mime_type))
         
         # Add the text prompt
@@ -1231,7 +1229,7 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None, image_m
         
         # Build config with aspect ratio
         config_kwargs = {
-            "response_modalities": ["Text", "Image"],
+            "response_modalities": ["TEXT", "IMAGE"],
             "safety_settings": dynamic_config.safety_settings,
         }
         
