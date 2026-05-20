@@ -169,7 +169,8 @@ class Context(commands.Cog):
                                                 image_bytes = await resp.read()
                                                 content_type = resp.headers.get('Content-Type', 'image/gif')
                                                 if content_type.startswith('image/') or content_type.startswith('video/'):
-                                                    import tempfile, os
+                                                    import os
+                                                    import tempfile
                                                     from utils.gemini import api_key_manager, execute_with_retry
                                                     ext = '.gif' if content_type.startswith('image/gif') else '.mp4'
                                                     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
@@ -207,7 +208,7 @@ class Context(commands.Cog):
                                 if embed.url:
                                     embed_lines.append(f"URL: {embed.url}")
                                 if embed_lines:
-                                    parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
+                                    parts.append(Part(text="[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
                 
                 # Create as user content (treated as context from others)
                 context_contents.append(Content(role="user", parts=parts))

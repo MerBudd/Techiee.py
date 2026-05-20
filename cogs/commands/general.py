@@ -6,7 +6,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from utils.config_manager import dynamic_config
-from utils.gemini import tracked_threads, message_history, get_history_key, pending_context
+from utils.gemini import tracked_threads, message_history, pending_context, clear_interaction_history
 
 
 class General(commands.Cog):
@@ -32,7 +32,7 @@ class General(commands.Cog):
             thread = await interaction.channel.create_thread(name=name, type=discord.ChannelType.public_thread, auto_archive_duration=60)
             tracked_threads.append(thread.id)
             await interaction.response.send_message(f"Thread '{name}' created! Go to <#{thread.id}> to join the thread and chat with me there.")
-        except Exception as e:
+        except Exception:
             await interaction.response.send_message("❗️ Error creating thread!")
     
     @app_commands.checks.cooldown(1, dynamic_config.cooldowns.get("forget", 5))
@@ -62,13 +62,15 @@ class General(commands.Cog):
         
         if history_key in message_history:
             del message_history[history_key]
-            # Also clear any pending context for this key
+            # Also clear pending context and interaction history for this key
             if history_key in pending_context:
                 del pending_context[history_key]
+            clear_interaction_history(history_key)
             await interaction.response.send_message(f"🧼 History cleared for {scope_msg}!")
         elif history_key in pending_context:
             # Only pending context exists
             del pending_context[history_key]
+            clear_interaction_history(history_key)
             await interaction.response.send_message(f"🧼 Pending context cleared for {scope_msg}!")
         else:
             await interaction.response.send_message("📭 No history to clear in this context.")

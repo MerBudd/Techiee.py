@@ -11,7 +11,6 @@ from google.genai.types import Part
 from utils.config_manager import dynamic_config
 from utils.helpers import clean_discord_message, extract_url, is_youtube_url, extract_custom_emojis, get_emoji_cdn_url
 from utils.gemini import tracked_threads, get_settings, has_auto_respond_for_channel
-from utils.typing import typing_manager
 
 from utils.reply_chain import fetch_reply_chain
 
@@ -121,7 +120,8 @@ class Router(commands.Cog):
                                                     image_bytes = await resp.read()
                                                     content_type = resp.headers.get('Content-Type', 'image/gif')
                                                     if content_type.startswith('image/') or content_type.startswith('video/'):
-                                                        import tempfile, os
+                                                        import os
+                                                        import tempfile
                                                         from utils.gemini import api_key_manager, execute_with_retry
                                                         ext = '.gif' if content_type.startswith('image/gif') else '.mp4'
                                                         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:

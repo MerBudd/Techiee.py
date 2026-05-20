@@ -59,11 +59,11 @@ class WebsiteProcessor(commands.Cog):
             history = (reply_chain_context + pending_ctx) if (reply_chain_context or pending_ctx) else None
         
         # Process website URL with history context
-        response_text, user_parts = await process_website_url(url, cleaned_text, settings, history, user_display_name, user_username)
+        response_text, user_parts = await process_website_url(url, cleaned_text, settings, history, user_display_name, user_username, history_key=history_key)
         
         # Define retry callback
         async def retry_callback():
-            result, _ = await process_website_url(url, cleaned_text, settings, history, user_display_name, user_username)
+            result, _ = await process_website_url(url, cleaned_text, settings, history, user_display_name, user_username, history_key=history_key)
             return result
         
         # Define history update callback

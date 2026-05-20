@@ -67,10 +67,10 @@ class TextProcessor(commands.Cog):
             # Even with no history, we can still use pending context and reply chain
             user_content = create_user_content(user_parts)
             contents = reply_chain_context + pending_ctx + [user_content]
-            response_text = await generate_response_with_text(contents, settings, user_display_name, user_username)
+            response_text = await generate_response_with_text(contents, settings, user_display_name, user_username, history_key=history_key)
             
             async def retry_callback():
-                return await generate_response_with_text(contents, settings, user_display_name, user_username)
+                return await generate_response_with_text(contents, settings, user_display_name, user_username, history_key=history_key)
             
             await send_response_with_retry(message, response_text, retry_callback, history_key=history_key)
             return
@@ -84,11 +84,11 @@ class TextProcessor(commands.Cog):
         contents = history + reply_chain_context + pending_ctx + [user_content]
         
         # Generate response with full history context
-        response_text = await generate_response_with_text(contents, settings, user_display_name, user_username)
+        response_text = await generate_response_with_text(contents, settings, user_display_name, user_username, history_key=history_key)
         
         # Define retry callback that re-generates with same context
         async def retry_callback():
-            return await generate_response_with_text(contents, settings, user_display_name, user_username)
+            return await generate_response_with_text(contents, settings, user_display_name, user_username, history_key=history_key)
         
         # Store full user_parts so images/stickers/GIFs stay in history
         async def update_history(response_text):

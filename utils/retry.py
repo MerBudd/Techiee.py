@@ -5,7 +5,7 @@ import asyncio
 import discord
 from discord import ui
 
-from utils.helpers import split_and_send_messages
+
 from utils.typing import typing_manager
 
 

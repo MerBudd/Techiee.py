@@ -3,3 +3,4 @@ aiohttp
 google-genai
 python-dotenv
 flask
+pytest

@@ -8,7 +8,7 @@ def is_admin(interaction: discord.Interaction):
     return interaction.user.id in dynamic_config.admin_user_ids
 
 class ModelsModal(ui.Modal, title="Configure Models"):
-    text_model = ui.TextInput(label="Default Text Model (API Name)", required=False, placeholder="gemini-3.1-flash-lite-preview")
+    text_model = ui.TextInput(label="Default Text Model (API Name)", required=False, placeholder="gemini-3.1-flash-lite")
     image_model = ui.TextInput(label="Default Image Model (API Name)", required=False, placeholder="gemini-3.1-flash-image-preview")
     aspect_ratio = ui.TextInput(label="Default Aspect Ratio", placeholder="1:1, 16:9, etc.")
 

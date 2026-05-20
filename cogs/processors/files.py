@@ -73,13 +73,13 @@ class FileProcessor(commands.Cog):
         
         # Process file(s) with history context
         response_text, history_parts, uploaded_files = await process_file_attachments(
-            attachments, cleaned_text, settings, history, user_display_name, user_username
+            attachments, cleaned_text, settings, history, user_display_name, user_username, history_key=history_key
         )
         
         # Define retry callback
         async def retry_callback():
             result, _, _ = await process_file_attachments(
-                attachments, cleaned_text, settings, history, user_display_name, user_username
+                attachments, cleaned_text, settings, history, user_display_name, user_username, history_key=history_key
             )
             return result
         

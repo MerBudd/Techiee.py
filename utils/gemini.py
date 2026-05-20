@@ -13,7 +13,6 @@ from google.genai import types
 from google.genai.types import Part, Content
 
 from config import (
-    gemini_api_key,
     gemini_api_keys,
     get_system_instruction,
     url_context_tool,
@@ -150,6 +149,9 @@ async def execute_with_retry(func, *args, **kwargs):
 
 # --- Shared State ---
 message_history = {}
+# Tracks the latest interaction ID per history_key for server-side multi-turn context.
+# key → list of interaction IDs, most recent last.
+interaction_history = {}
 tracked_threads = []
 
 # Context-scoped settings (keyed like message_history)
@@ -286,20 +288,6 @@ def get_pending_context_channel(context_key):
         return ctx.get("listen_channel_id")
     return None
 
-
-def get_pending_context_remaining(context_key):
-    """Get remaining uses for a context's pending context.
-    
-    Args:
-        context_key: Tuple like ("dm", user_id) or ("tracked", user_id) etc.
-    
-    Returns:
-        Remaining uses, or 0 if no context.
-    """
-    ctx = pending_context.get(context_key)
-    if ctx:
-        return ctx["remaining_uses"]
-    return 0
 
 
 def has_auto_respond_for_channel(user_id, channel_id):
@@ -520,16 +508,51 @@ def create_model_content(text):
     return Content(role="model", parts=[Part(text=text)])
 
 
+# --- Interaction History Helpers ---
+
+def get_previous_interaction_id(history_key):
+    """Return the most recent interaction ID for a context, or None."""
+    ids = interaction_history.get(history_key)
+    return ids[-1] if ids else None
+
+
+def append_interaction_id(history_key, interaction_id):
+    """Append a new interaction ID to the history for a context."""
+    if history_key not in interaction_history:
+        interaction_history[history_key] = []
+    interaction_history[history_key].append(interaction_id)
+    # Mirror max_history limit so IDs don't grow unbounded
+    max_ids = max(dynamic_config.max_history, 1)
+    if len(interaction_history[history_key]) > max_ids:
+        interaction_history[history_key].pop(0)
+
+
+def pop_last_interaction_id(history_key):
+    """Remove and return the most recent interaction ID for a context."""
+    ids = interaction_history.get(history_key)
+    if ids:
+        return ids.pop()
+    return None
+
+
+def clear_interaction_history(history_key):
+    """Clear all interaction IDs for a context (e.g. on /clear or Forget)."""
+    interaction_history.pop(history_key, None)
+
+
 # --- Response Generation Functions ---
 
-async def generate_response_with_text(contents, settings, user_display_name=None, user_username=None):
-    """Generate a response for text input with optional history.
+async def generate_response_with_text(contents, settings, user_display_name=None, user_username=None, history_key=None):
+    """Generate a response for text input using the Interactions API.
     
     Args:
-        contents: Either a string (single message) or list of Content objects (with history)
+        contents: Either a string (single message) or list of Content objects (with history).
+                  When history_key is provided and a previous_interaction_id exists, only the
+                  last user message needs to be passed — history is managed server-side.
         settings: User/thread settings dict
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Response text string
@@ -537,39 +560,60 @@ async def generate_response_with_text(contents, settings, user_display_name=None
     try:
         effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
-        
         config = create_generate_config(
             system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
             tools=[get_google_search_tool()] if get_google_search_tool() else None,
         )
-        
-        # Use execute_with_retry for automatic key rotation on 429 errors
-        response = await execute_with_retry(
-            lambda: api_key_manager.client.models.generate_content(
+
+        prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+        # When continuing a conversation server-side, only pass the new user turn.
+        # Otherwise send the full contents list for stateless / first-turn calls.
+        if prev_id:
+            # Extract the last user message from the contents list
+            if isinstance(contents, list) and contents:
+                new_input = contents[-1]  # last element is the current user message
+            else:
+                new_input = contents
+        else:
+            new_input = contents
+
+        interaction = await execute_with_retry(
+            lambda: api_key_manager.client.interactions.create(
                 model=settings.get("text_model", dynamic_config.default_text_model),
-                contents=contents,
-                config=config
+                input=new_input,
+                generation_config=config,
+                **({
+                    "previous_interaction_id": prev_id,
+                    "system_instruction": effective_system_instruction,
+                } if prev_id else {
+                    "system_instruction": effective_system_instruction,
+                })
             )
         )
-        # Handle case where response.text is None
-        if response.text is None:
+
+        if history_key:
+            append_interaction_id(history_key, interaction.id)
+
+        if interaction.output_text is None:
             return "❌ I received an empty response. Please try again."
-        return convert_latex_to_discord(response.text)
+        return convert_latex_to_discord(interaction.output_text)
     except Exception as e:
         return "❌ Exception: " + str(e)
 
 
-async def process_image_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
-    """Process an image attachment using the Files API with optional history.
+async def process_image_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process an image attachment using the Files API via the Interactions API.
     
     Args:
         attachment: Discord attachment object
         user_text: User's message text
         settings: User/thread settings dict
-        history: Optional list of Content objects (message history)
+        history: Optional list of Content objects (message history, used for first turn)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_file) for history tracking.
@@ -600,50 +644,57 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             
             prompt = user_text if user_text else dynamic_config.default_image_prompt
             
-            # Build user content parts for this message (with actual file for current request)
+            # Build user content parts for this message
             user_parts = [
                 Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
                 Part(text=prompt)
             ]
             
-            # Build contents: history + current message
-            if history:
-                contents = history + [Content(role="user", parts=user_parts)]
-            else:
-                contents = [Content(role="user", parts=user_parts)]
-            
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
-            
-            # Use execute_with_retry for automatic key rotation on 429 errors
-            response = await execute_with_retry(
-                lambda: api_key_manager.client.models.generate_content(
+
+            prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+            if prev_id:
+                new_input = Content(role="user", parts=user_parts)
+            elif history:
+                new_input = history + [Content(role="user", parts=user_parts)]
+            else:
+                new_input = [Content(role="user", parts=user_parts)]
+
+            interaction = await execute_with_retry(
+                lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
-                    contents=contents,
-                    config=config
+                    input=new_input,
+                    generation_config=config,
+                    system_instruction=effective_system_instruction,
+                    **({
+                        "previous_interaction_id": prev_id,
+                    } if prev_id else {})
                 )
             )
+
+            if history_key:
+                append_interaction_id(history_key, interaction.id)
             
-            # Create sanitized parts for history (text-only, no file URI that could expire)
+            # Sanitized history parts (text-only, no file URI that could expire)
             history_parts = [
                 Part(text=f"[Image: {attachment.filename}]\n{prompt}")
             ]
             
-            # Handle case where response.text is None
-            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
             return (convert_latex_to_discord(response_text), history_parts, uploaded_file)
         finally:
-            # Clean up temp file
             os.unlink(tmp_path)
             
     except Exception as e:
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_image_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None):
-    """Process multiple image attachments using the Files API.
+async def process_image_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process multiple image attachments using the Files API via the Interactions API.
     
     Args:
         attachments: List of Discord attachment objects
@@ -652,6 +703,7 @@ async def process_image_attachments(attachments, user_text, settings, history=No
         history: Optional list of Content objects (message history)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_files) for history tracking.
@@ -659,7 +711,7 @@ async def process_image_attachments(attachments, user_text, settings, history=No
     # Handle single attachment case
     if len(attachments) == 1:
         response, parts, file = await process_image_attachment(
-            attachments[0], user_text, settings, history, user_display_name, user_username
+            attachments[0], user_text, settings, history, user_display_name, user_username, history_key
         )
         return (response, parts, [file] if file else None)
     
@@ -695,33 +747,42 @@ async def process_image_attachments(attachments, user_text, settings, history=No
         try:
             prompt = user_text if user_text else dynamic_config.default_image_prompt
             
-            # Build user content parts with all images
             user_parts = []
             for uploaded_file in uploaded_files:
                 user_parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
             user_parts.append(Part(text=prompt))
             
-            if history:
-                contents = history + [Content(role="user", parts=user_parts)]
-            else:
-                contents = user_parts
-            
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
-            
-            response = await execute_with_retry(
-                lambda: api_key_manager.client.models.generate_content(
+
+            prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+            if prev_id:
+                new_input = Content(role="user", parts=user_parts)
+            elif history:
+                new_input = history + [Content(role="user", parts=user_parts)]
+            else:
+                new_input = [Content(role="user", parts=user_parts)]
+
+            interaction = await execute_with_retry(
+                lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
-                    contents=contents,
-                    config=config
+                    input=new_input,
+                    generation_config=config,
+                    system_instruction=effective_system_instruction,
+                    **({
+                        "previous_interaction_id": prev_id,
+                    } if prev_id else {})
                 )
             )
+
+            if history_key:
+                append_interaction_id(history_key, interaction.id)
             
             history_parts = [Part(text=f"[Images: {', '.join(filenames)}]\n{prompt}")]
-            # Handle case where response.text is None
-            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
             return (convert_latex_to_discord(response_text), history_parts, uploaded_files)
         finally:
             for tmp_path in temp_paths:
@@ -734,9 +795,8 @@ async def process_image_attachments(attachments, user_text, settings, history=No
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_video_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
-
-    """Process a video attachment using the Files API with proper state waiting.
+async def process_video_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process a video attachment using the Files API via the Interactions API.
     
     Args:
         attachment: Discord attachment object
@@ -745,6 +805,7 @@ async def process_video_attachment(attachment, user_text, settings, history=None
         history: Optional list of Content objects (message history)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_file) for history tracking.
@@ -762,68 +823,70 @@ async def process_video_attachment(attachment, user_text, settings, history=None
                     return ("❌ Unable to download the video.", None, None)
                 video_data = await resp.read()
         
-        # Create a temporary file and upload to Gemini
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1]) as tmp_file:
             tmp_file.write(video_data)
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini with retry on 429 errors
             uploaded_file = await execute_with_retry(
                 lambda: api_key_manager.client.files.upload(file=tmp_path)
             )
             
-            # Wait for video file to become ACTIVE (videos need processing time)
             print(f"Waiting for video file to become active: {uploaded_file.name}")
             active_file = await wait_for_file_active(uploaded_file)
             print(f"Video file is now active: {active_file.name}")
             
             prompt = user_text if user_text else "What is this video about? Summarize it for me."
             
-            # Build user content parts for this message (with actual file for current request)
             user_parts = [
                 Part.from_uri(file_uri=active_file.uri, mime_type=active_file.mime_type),
                 Part(text=prompt)
             ]
             
-            # Build contents: history + current message
-            if history:
-                contents = history + [Content(role="user", parts=user_parts)]
-            else:
-                contents = [Content(role="user", parts=user_parts)]
-            
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
-            
-            # Use execute_with_retry for automatic key rotation on 429 errors
-            response = await execute_with_retry(
-                lambda: api_key_manager.client.models.generate_content(
+
+            prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+            if prev_id:
+                new_input = Content(role="user", parts=user_parts)
+            elif history:
+                new_input = history + [Content(role="user", parts=user_parts)]
+            else:
+                new_input = [Content(role="user", parts=user_parts)]
+
+            interaction = await execute_with_retry(
+                lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
-                    contents=contents,
-                    config=config
+                    input=new_input,
+                    generation_config=config,
+                    system_instruction=effective_system_instruction,
+                    **({
+                        "previous_interaction_id": prev_id,
+                    } if prev_id else {})
                 )
             )
+
+            if history_key:
+                append_interaction_id(history_key, interaction.id)
             
-            # Create sanitized parts for history (text-only, no file URI that could expire)
             history_parts = [
                 Part(text=f"[Video: {attachment.filename}]\n{prompt}")
             ]
             
-            # Handle case where response.text is None
-            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
             return (convert_latex_to_discord(response_text), history_parts, active_file)
         finally:
-            # Clean up temp file
             os.unlink(tmp_path)
             
     except Exception as e:
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_video_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None):
-    """Process multiple video attachments using the Files API.
+async def process_video_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process multiple video attachments using the Files API via the Interactions API.
     
     Args:
         attachments: List of Discord attachment objects
@@ -832,6 +895,7 @@ async def process_video_attachments(attachments, user_text, settings, history=No
         history: Optional list of Content objects (message history)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_files) for history tracking.
@@ -839,7 +903,7 @@ async def process_video_attachments(attachments, user_text, settings, history=No
     # Handle single attachment case
     if len(attachments) == 1:
         response, parts, file = await process_video_attachment(
-            attachments[0], user_text, settings, history, user_display_name, user_username
+            attachments[0], user_text, settings, history, user_display_name, user_username, history_key
         )
         return (response, parts, [file] if file else None)
     
@@ -851,7 +915,6 @@ async def process_video_attachments(attachments, user_text, settings, history=No
         temp_paths = []
         filenames = []
         
-        # Download and upload all videos
         async with aiohttp.ClientSession() as session:
             for attachment in attachments:
                 async with session.get(attachment.url) as resp:
@@ -867,7 +930,6 @@ async def process_video_attachments(attachments, user_text, settings, history=No
                     lambda path=temp_paths[-1]: api_key_manager.client.files.upload(file=path)
                 )
                 
-                # Wait for video to become active
                 print(f"Waiting for video file to become active: {uploaded_file.name}")
                 active_file = await wait_for_file_active(uploaded_file)
                 print(f"Video file is now active: {active_file.name}")
@@ -881,33 +943,42 @@ async def process_video_attachments(attachments, user_text, settings, history=No
         try:
             prompt = user_text if user_text else "What are these videos about? Summarize them for me."
             
-            # Build user content parts with all videos
             user_parts = []
             for uploaded_file in uploaded_files:
                 user_parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
             user_parts.append(Part(text=prompt))
             
-            if history:
-                contents = history + [Content(role="user", parts=user_parts)]
-            else:
-                contents = user_parts
-            
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
-            
-            response = await execute_with_retry(
-                lambda: api_key_manager.client.models.generate_content(
+
+            prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+            if prev_id:
+                new_input = Content(role="user", parts=user_parts)
+            elif history:
+                new_input = history + [Content(role="user", parts=user_parts)]
+            else:
+                new_input = [Content(role="user", parts=user_parts)]
+
+            interaction = await execute_with_retry(
+                lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
-                    contents=contents,
-                    config=config
+                    input=new_input,
+                    generation_config=config,
+                    system_instruction=effective_system_instruction,
+                    **({
+                        "previous_interaction_id": prev_id,
+                    } if prev_id else {})
                 )
             )
+
+            if history_key:
+                append_interaction_id(history_key, interaction.id)
             
             history_parts = [Part(text=f"[Videos: {', '.join(filenames)}]\n{prompt}")]
-            # Handle case where response.text is None
-            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
             return (convert_latex_to_discord(response_text), history_parts, uploaded_files)
         finally:
             for tmp_path in temp_paths:
@@ -920,9 +991,8 @@ async def process_video_attachments(attachments, user_text, settings, history=No
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_file_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None):
-
-    """Process PDF or text file attachments using the Files API.
+async def process_file_attachment(attachment, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process PDF or text file attachments using the Files API via the Interactions API.
     
     Args:
         attachment: Discord attachment object
@@ -931,6 +1001,7 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
         history: Optional list of Content objects (message history)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_file) for history tracking.
@@ -941,70 +1012,72 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
         effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         
-        # Download the file
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
                 if resp.status != 200:
                     return ("❌ Unable to download the attachment.", None, None)
                 file_data = await resp.read()
         
-        # Create a temporary file and upload to Gemini
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1]) as tmp_file:
             tmp_file.write(file_data)
             tmp_path = tmp_file.name
         
         try:
-            # Upload file to Gemini with retry on 429 errors
             uploaded_file = await execute_with_retry(
                 lambda: api_key_manager.client.files.upload(file=tmp_path)
             )
             
             prompt = user_text if user_text else dynamic_config.default_pdf_and_txt_prompt
             
-            # Build user content parts for this message (with actual file for current request)
             user_parts = [
                 Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
                 Part(text=prompt)
             ]
             
-            # Build contents: history + current message
-            if history:
-                contents = history + [Content(role="user", parts=user_parts)]
-            else:
-                contents = user_parts
-            
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
-            
-            # Use execute_with_retry for automatic key rotation on 429 errors
-            response = await execute_with_retry(
-                lambda: api_key_manager.client.models.generate_content(
+
+            prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+            if prev_id:
+                new_input = Content(role="user", parts=user_parts)
+            elif history:
+                new_input = history + [Content(role="user", parts=user_parts)]
+            else:
+                new_input = [Content(role="user", parts=user_parts)]
+
+            interaction = await execute_with_retry(
+                lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
-                    contents=contents,
-                    config=config
+                    input=new_input,
+                    generation_config=config,
+                    system_instruction=effective_system_instruction,
+                    **({
+                        "previous_interaction_id": prev_id,
+                    } if prev_id else {})
                 )
             )
+
+            if history_key:
+                append_interaction_id(history_key, interaction.id)
             
-            # Create sanitized parts for history (text-only, no file URI that could expire)
             history_parts = [
                 Part(text=f"[File: {attachment.filename}]\n{prompt}")
             ]
             
-            # Handle case where response.text is None
-            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
             return (convert_latex_to_discord(response_text), history_parts, uploaded_file)
         finally:
-            # Clean up temp file
             os.unlink(tmp_path)
             
     except Exception as e:
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_file_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None):
-    """Process multiple file attachments using the Files API.
+async def process_file_attachments(attachments, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process multiple file attachments using the Files API via the Interactions API.
     
     Args:
         attachments: List of Discord attachment objects
@@ -1013,6 +1086,7 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
         history: Optional list of Content objects (message history)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, history_parts, uploaded_files) for history tracking.
@@ -1020,7 +1094,7 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
     # Handle single attachment case
     if len(attachments) == 1:
         response, parts, file = await process_file_attachment(
-            attachments[0], user_text, settings, history, user_display_name, user_username
+            attachments[0], user_text, settings, history, user_display_name, user_username, history_key
         )
         return (response, parts, [file] if file else None)
     
@@ -1032,7 +1106,6 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
         temp_paths = []
         filenames = []
         
-        # Download and upload all files
         async with aiohttp.ClientSession() as session:
             for attachment in attachments:
                 async with session.get(attachment.url) as resp:
@@ -1056,33 +1129,42 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
         try:
             prompt = user_text if user_text else dynamic_config.default_pdf_and_txt_prompt
             
-            # Build user content parts with all files
             user_parts = []
             for uploaded_file in uploaded_files:
                 user_parts.append(Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type))
             user_parts.append(Part(text=prompt))
             
-            if history:
-                contents = history + [Content(role="user", parts=user_parts)]
-            else:
-                contents = user_parts
-            
             config = create_generate_config(
                 system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
-            
-            response = await execute_with_retry(
-                lambda: api_key_manager.client.models.generate_content(
+
+            prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+            if prev_id:
+                new_input = Content(role="user", parts=user_parts)
+            elif history:
+                new_input = history + [Content(role="user", parts=user_parts)]
+            else:
+                new_input = [Content(role="user", parts=user_parts)]
+
+            interaction = await execute_with_retry(
+                lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
-                    contents=contents,
-                    config=config
+                    input=new_input,
+                    generation_config=config,
+                    system_instruction=effective_system_instruction,
+                    **({
+                        "previous_interaction_id": prev_id,
+                    } if prev_id else {})
                 )
             )
+
+            if history_key:
+                append_interaction_id(history_key, interaction.id)
             
             history_parts = [Part(text=f"[Files: {', '.join(filenames)}]\n{prompt}")]
-            # Handle case where response.text is None
-            response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+            response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
             return (convert_latex_to_discord(response_text), history_parts, uploaded_files)
         finally:
             for tmp_path in temp_paths:
@@ -1095,9 +1177,8 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
         return ("❌ Exception: " + str(e), None, None)
 
 
-async def process_youtube_url(url, user_text, settings, history=None, user_display_name=None, user_username=None):
-
-    """Process YouTube video URL using FileData.
+async def process_youtube_url(url, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process YouTube video URL via the Interactions API.
     
     Args:
         url: YouTube URL
@@ -1106,6 +1187,7 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
         history: Optional list of Content objects (message history)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, user_content_parts) for history tracking
@@ -1116,40 +1198,48 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
         
         prompt = user_text.replace(url, "").strip() if user_text else dynamic_config.default_url_prompt
         
-        # Build user content parts for this message
         user_parts = [
             Part(file_data=types.FileData(file_uri=url)),
             Part(text=prompt)
         ]
         
-        # Build contents: history + current message
-        if history:
-            contents = history + [Content(role="user", parts=user_parts)]
-        else:
-            contents = [Content(role="user", parts=user_parts)]
-        
         config = create_generate_config(
             system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
         )
-        
-        # Use execute_with_retry for automatic key rotation on 429 errors
-        response = await execute_with_retry(
-            lambda: api_key_manager.client.models.generate_content(
+
+        prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+        if prev_id:
+            new_input = Content(role="user", parts=user_parts)
+        elif history:
+            new_input = history + [Content(role="user", parts=user_parts)]
+        else:
+            new_input = [Content(role="user", parts=user_parts)]
+
+        interaction = await execute_with_retry(
+            lambda: api_key_manager.client.interactions.create(
                 model=settings.get("text_model", dynamic_config.default_text_model),
-                contents=contents,
-                config=config
+                input=new_input,
+                generation_config=config,
+                system_instruction=effective_system_instruction,
+                **({
+                    "previous_interaction_id": prev_id,
+                } if prev_id else {})
             )
         )
-        # Handle case where response.text is None
-        response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+
+        if history_key:
+            append_interaction_id(history_key, interaction.id)
+
+        response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
         return (convert_latex_to_discord(response_text), user_parts)
     except Exception as e:
         return ("❌ Exception: " + str(e), None)
 
 
-async def process_website_url(url, user_text, settings, history=None, user_display_name=None, user_username=None):
-    """Process website URL using URL context tool.
+async def process_website_url(url, user_text, settings, history=None, user_display_name=None, user_username=None, history_key=None):
+    """Process website URL using URL context tool via the Interactions API.
     
     Args:
         url: Website URL
@@ -1158,6 +1248,7 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         history: Optional list of Content objects (message history)
         user_display_name: Display name of the user (optional)
         user_username: Username of the user without @ (optional)
+        history_key: Context key for server-side interaction history tracking (optional)
     
     Returns:
         Tuple of (response_text, user_content_parts) for history tracking
@@ -1168,35 +1259,42 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         
         prompt = user_text if user_text else f"{dynamic_config.default_url_prompt} {url}"
         
-        # If user provided custom text, make sure the URL is included
         if user_text and url not in user_text:
             prompt = f"{user_text} {url}"
         
-        # Build user content parts for this message
         user_parts = [Part(text=prompt)]
-        
-        # Build contents: history + current message
-        if history:
-            contents = history + [Content(role="user", parts=user_parts)]
-        else:
-            contents = [Content(role="user", parts=user_parts)]
         
         config = create_generate_config(
             system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
             tools=[url_context_tool],
         )
-        
-        # Use execute_with_retry for automatic key rotation on 429 errors
-        response = await execute_with_retry(
-            lambda: api_key_manager.client.models.generate_content(
+
+        prev_id = get_previous_interaction_id(history_key) if history_key else None
+
+        if prev_id:
+            new_input = Content(role="user", parts=user_parts)
+        elif history:
+            new_input = history + [Content(role="user", parts=user_parts)]
+        else:
+            new_input = [Content(role="user", parts=user_parts)]
+
+        interaction = await execute_with_retry(
+            lambda: api_key_manager.client.interactions.create(
                 model=settings.get("text_model", dynamic_config.default_text_model),
-                contents=contents,
-                config=config
+                input=new_input,
+                generation_config=config,
+                system_instruction=effective_system_instruction,
+                **({
+                    "previous_interaction_id": prev_id,
+                } if prev_id else {})
             )
         )
-        # Handle case where response.text is None
-        response_text = response.text if response.text else "❌ I received an empty response. Please try again."
+
+        if history_key:
+            append_interaction_id(history_key, interaction.id)
+
+        response_text = interaction.output_text if interaction.output_text else "❌ I received an empty response. Please try again."
         return (convert_latex_to_discord(response_text), user_parts)
     except Exception as e:
         return ("❌ Exception: " + str(e), None)
@@ -1244,7 +1342,6 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None, image_m
         # Track keys tried manually for image generation (to detect free-tier errors)
         keys_tried = 0
         total_keys = len(api_key_manager.api_keys)
-        last_error = None
         
         while keys_tried < total_keys:
             try:
@@ -1260,7 +1357,6 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None, image_m
                 if is_free_tier_error(e):
                     # This key is free-tier, try next key
                     keys_tried += 1
-                    last_error = e
                     if keys_tried < total_keys and api_key_manager.rotate_key():
                         continue
                     # All keys are free-tier
@@ -1269,7 +1365,6 @@ async def generate_or_edit_image(prompt, images=None, aspect_ratio=None, image_m
                 elif is_rate_limit_error(e):
                     # Normal rate limit, try next key
                     keys_tried += 1
-                    last_error = e
                     if keys_tried < total_keys and api_key_manager.rotate_key():
                         continue
                     raise Exception(f"All {total_keys} API key(s) have been rate limited. Please wait and try again later.")

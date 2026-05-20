@@ -3,7 +3,7 @@
 ## [2.10.0-exp] - 2026-03-14
 
 ### Added
-- **Gemini 3.1 Flash-Lite Support**: Integrated the new `gemini-3.1-flash-lite-preview` as the default model for faster and more efficient responses.
+- **Gemini 3.1 Flash-Lite Support**: Integrated the new `gemini-3.1-flash-lite` as the default model for faster and more efficient responses.
 - **Model Lists**: Turned the text and image model configs in `config.py` into a list of models that can be used. The first model in the list is the default model.
 - **Model Switching Interface**: Added a dedicated `/model` slash command to swap between text and image models (Gemini 3 Flash, 3.1 Flash-Lite, 3.1 Pro, Nano Banana 2/Pro).
 - **Settings UI Expansion**: Updated the `/settings` panel with interactive dropdowns for live text and image model selection.

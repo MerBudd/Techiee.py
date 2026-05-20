@@ -5,8 +5,6 @@ When a user replies to a message, this utility fetches the parent messages
 in the reply chain to provide conversation context to Gemini.
 """
 import discord
-from datetime import datetime
-
 from google.genai.types import Part, Content
 
 
@@ -71,7 +69,6 @@ async def format_message_for_context(message: discord.Message) -> Content:
         Content object with message info and attachments, or None if empty message.
     """
     import aiohttp
-    from google.genai.types import Part
     
     # Build the context text with metadata
     timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -115,7 +112,7 @@ async def format_message_for_context(message: discord.Message) -> Content:
                                         "mime_type": attachment.content_type,
                                         "data": image_bytes
                                     }))
-                        except Exception as e:
+                        except Exception:
                             # If download fails, just note the filename
                             parts.append(Part(text=f"[Failed to load image: {attachment.filename}]"))
                     else:
@@ -134,7 +131,6 @@ async def format_message_for_context(message: discord.Message) -> Content:
 async def _add_sticker_parts(message: discord.Message, parts: list):
     """Extract sticker info from a message and download sticker images."""
     import aiohttp
-    from google.genai.types import Part
     
     if message.stickers:
         async with aiohttp.ClientSession() as session:
@@ -166,7 +162,6 @@ async def _add_sticker_parts(message: discord.Message, parts: list):
 async def _add_embed_parts(message: discord.Message, parts: list):
     """Extract embed content (rich embeds, GIFs, etc.) from a message and download GIF images."""
     import aiohttp
-    from google.genai.types import Part
     
     if message.embeds:
         async with aiohttp.ClientSession() as session:
@@ -187,7 +182,8 @@ async def _add_embed_parts(message: discord.Message, parts: list):
                                     image_bytes = await resp.read()
                                     content_type = resp.headers.get('Content-Type', 'image/gif')
                                     if content_type.startswith('image/') or content_type.startswith('video/'):
-                                        import tempfile, os
+                                        import os
+                                        import tempfile
                                         from utils.gemini import api_key_manager, execute_with_retry
                                         ext = '.gif' if content_type.startswith('image/gif') else '.mp4'
                                         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
@@ -229,7 +225,7 @@ async def _add_embed_parts(message: discord.Message, parts: list):
                     embed_lines.append(f"URL: {embed.url}")
                 
                 if embed_lines:
-                    parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
+                    parts.append(Part(text="[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
 
 
 def format_reply_chain_as_context_text(chain_contents: list) -> str:

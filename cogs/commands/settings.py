@@ -11,13 +11,11 @@ from utils.gemini import (
     context_settings,
     default_settings,
     set_settings_for_context,
-    get_message_history_contents,
-    get_history_key,
     message_history,
     generate_response_with_text,
     pending_context,
     set_pending_context,
-    get_pending_context,
+    clear_interaction_history,
 )
 
 
@@ -99,7 +97,8 @@ class TextModelSelect(ui.Select):
             m_name = m_data["name"]
             m_desc = m_data["description"]
             is_default = (current_model == m_id)
-            if is_default: found = True
+            if is_default:
+                found = True
             options.append(discord.SelectOption(label=m_name, value=m_id, description=m_desc, default=is_default, emoji="💬"))
             
         if not found and current_model:
@@ -129,7 +128,8 @@ class ImageModelSelect(ui.Select):
             m_name = m_data["name"]
             m_desc = m_data["description"]
             is_default = (current_model == m_id)
-            if is_default: found = True
+            if is_default:
+                found = True
             options.append(discord.SelectOption(label=m_name, value=m_id, description=m_desc, default=is_default, emoji="🖼️"))
             
         if not found and current_model:
@@ -356,7 +356,7 @@ class ContextModal(ui.Modal, title="Load Context"):
                                 if embed.url:
                                     embed_lines.append(f"URL: {embed.url}")
                                 if embed_lines:
-                                    parts.append(Part(text=f"[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
+                                    parts.append(Part(text="[Embed]\n" + "\n".join(embed_lines) + "\n[/Embed]"))
                 
                 context_contents.append(Content(role="user", parts=parts))
             
@@ -439,7 +439,7 @@ class HelpButton(ui.Button):
     
     async def callback(self, interaction: discord.Interaction):
         embed = discord.Embed(
-            description=help_text,
+            description=dynamic_config.help_text,
             color=discord.Color.dark_green()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -503,6 +503,8 @@ class ForgetButton(ui.Button):
         if self.settings_key in pending_context:
             del pending_context[self.settings_key]
             cleared = True
+        # Always clear server-side interaction IDs
+        clear_interaction_history(self.settings_key)
         
         if cleared:
             await interaction.response.send_message(f"🧼 History cleared for {self.scope_msg}!", ephemeral=True)

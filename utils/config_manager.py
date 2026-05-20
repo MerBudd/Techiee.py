@@ -1,7 +1,7 @@
 import json
 import os
 import config as default_config
-import copy
+
 from google.genai.types import HarmCategory, HarmBlockThreshold, SafetySetting
 
 CONFIG_FILE = "admin_config.json"

@@ -29,7 +29,7 @@ load_dotenv()
 # Text generation models. The first model in the list will be used as default.
 # User can select what model to use with /model or using /settings.
 text_models = {
-    "gemini-3.1-flash-lite-preview": {
+    "gemini-3.1-flash-lite": {
         "name": "Gemini 3.1 Flash-Lite (Fast)",
         "description": "Blazingly fast and efficient, perfect for quick chats and simple tasks."
     },

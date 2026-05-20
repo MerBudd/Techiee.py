@@ -8,10 +8,7 @@ Features:
 """
 import discord
 from discord.ext import commands
-import asyncio
 from collections import OrderedDict
-
-from utils.helpers import split_and_send_messages
 
 
 # Maximum number of tracked responses (LRU cache behavior)
@@ -113,7 +110,7 @@ class Reactions(commands.Cog):
             
             # Send ephemeral-like message (delete after a few seconds)
             try:
-                warning = await channel.send(
+                await channel.send(
                     f"<@{payload.user_id}> Only the original author can use this reaction.",
                     delete_after=5.0
                 )
@@ -129,7 +126,7 @@ class Reactions(commands.Cog):
     
     async def _handle_delete(self, message: discord.Message, tracking_info: dict):
         """Delete the bot's response (all splits) and update history."""
-        from utils.gemini import message_history
+        from utils.gemini import message_history, pop_last_interaction_id
         
         # Get all message IDs for this response (handles split messages)
         all_message_ids = tracking_info.get("all_message_ids", [message.id])
@@ -155,11 +152,15 @@ class Reactions(commands.Cog):
                 if history[i].role == "model":
                     history.pop(i)
                     break
+        
+        # Sync interaction_history: pop the last ID for this context
+        if history_key:
+            pop_last_interaction_id(history_key)
 
     
     async def _handle_regenerate(self, message: discord.Message, tracking_info: dict, channel):
         """Regenerate the bot's response (deletes all splits, updates history)."""
-        from utils.gemini import message_history
+        from utils.gemini import message_history, pop_last_interaction_id
         from utils.retry import split_and_send_messages_with_tracking
         
         regenerate_callback = tracking_info.get("regenerate_callback")
@@ -175,6 +176,11 @@ class Reactions(commands.Cog):
             await message.remove_reaction(self.REGENERATE_EMOJI, self.bot.user)
         except (discord.NotFound, discord.Forbidden):
             pass
+        
+        # Pop the last interaction ID before regenerating so the new response
+        # continues from the correct parent turn (the one before the deleted response).
+        if history_key:
+            pop_last_interaction_id(history_key)
         
         try:
             # Show typing indicator while generating
