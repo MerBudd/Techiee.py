@@ -244,7 +244,7 @@ url_context_tool = Tool(url_context=UrlContext())
 
 # --- Config Generator ---
 
-def create_generate_config(system_instruction, thinking_level=None, tools=None):
+def create_generate_config(system_instruction=None, thinking_level=None, tools=None):
     from utils.config_manager import dynamic_config
     
     if thinking_level is None:
@@ -253,15 +253,18 @@ def create_generate_config(system_instruction, thinking_level=None, tools=None):
     # Use config from overrides if present
     gen_config = dynamic_config.generation_config
     
-    return GenerateContentConfig(
-        system_instruction=system_instruction,
-        safety_settings=dynamic_config.safety_settings,
-        thinking_config=ThinkingConfig(thinking_level=thinking_level),
-        temperature=gen_config["temperature"],
-        top_p=gen_config["top_p"],
-        max_output_tokens=gen_config["max_output_tokens"],
-        tools=tools,
-    )
+    config_args = {
+        "safety_settings": dynamic_config.safety_settings,
+        "thinking_config": ThinkingConfig(thinking_level=thinking_level),
+        "temperature": gen_config["temperature"],
+        "top_p": gen_config["top_p"],
+        "max_output_tokens": gen_config["max_output_tokens"],
+        "tools": tools,
+    }
+    if system_instruction is not None:
+        config_args["system_instruction"] = system_instruction
+        
+    return GenerateContentConfig(**config_args)
 
 # --- API Key Loading ---
 # Load multiple API keys for rotation (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)

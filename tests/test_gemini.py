@@ -234,9 +234,8 @@ class TestGenerateResponseWithText(unittest.TestCase):
         self.assertIn("network error", result)
 
     def test_interactions_create_parameters(self):
-        """Verify client.interactions.create is called with the system_instruction at top level and None in config."""
+        """Verify client.interactions.create is called with the system_instruction at top level and not passed to config."""
         mock_config = MagicMock()
-        mock_config.system_instruction = "You are a test bot."
         config_mod.create_generate_config.return_value = mock_config
 
         async def _mock_execute(func):
@@ -245,21 +244,23 @@ class TestGenerateResponseWithText(unittest.TestCase):
         interaction = _make_interaction("Hi!")
         gemini_module.api_key_manager.client.interactions.create.reset_mock()
         gemini_module.api_key_manager.client.interactions.create.return_value = interaction
+        config_mod.create_generate_config.reset_mock()
 
         with patch.object(gemini_module, "execute_with_retry", side_effect=_mock_execute):
             run(gemini_module.generate_response_with_text("Hello", self.settings))
 
-        # Check call arguments
+        # Check create_generate_config call arguments: system_instruction must NOT be passed
+        config_mod.create_generate_config.assert_called_once()
+        config_kwargs = config_mod.create_generate_config.call_args.kwargs
+        self.assertNotIn("system_instruction", config_kwargs)
+
+        # Check call arguments of interactions.create
         create_mock = gemini_module.api_key_manager.client.interactions.create
         create_mock.assert_called_once()
         kwargs = create_mock.call_args.kwargs
 
         # system_instruction must be at top level
         self.assertEqual(kwargs.get("system_instruction"), "You are a test bot.")
-
-        # system_instruction must be None in generation_config
-        gen_config = kwargs.get("generation_config")
-        self.assertIsNone(gen_config.system_instruction)
 
 
 # ---------------------------------------------------------------------------

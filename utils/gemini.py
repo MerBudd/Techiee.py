@@ -561,7 +561,6 @@ async def generate_response_with_text(contents, settings, user_display_name=None
         effective_system_instruction = get_effective_system_instruction(settings, user_display_name, user_username)
         thinking_level = settings.get("thinking_level", "minimal")
         config = create_generate_config(
-            system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
             tools=[get_google_search_tool()] if get_google_search_tool() else None,
         )
@@ -578,8 +577,6 @@ async def generate_response_with_text(contents, settings, user_display_name=None
                 new_input = contents
         else:
             new_input = contents
-
-        config.system_instruction = None
 
         interaction = await execute_with_retry(
             lambda: api_key_manager.client.interactions.create(
@@ -649,7 +646,6 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             ]
             
             config = create_generate_config(
-                system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
 
@@ -661,8 +657,6 @@ async def process_image_attachment(attachment, user_text, settings, history=None
                 new_input = history + [Content(role="user", parts=user_parts)]
             else:
                 new_input = [Content(role="user", parts=user_parts)]
-
-            config.system_instruction = None
 
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
@@ -751,7 +745,6 @@ async def process_image_attachments(attachments, user_text, settings, history=No
             user_parts.append(Part(text=prompt))
             
             config = create_generate_config(
-                system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
 
@@ -763,8 +756,6 @@ async def process_image_attachments(attachments, user_text, settings, history=No
                 new_input = history + [Content(role="user", parts=user_parts)]
             else:
                 new_input = [Content(role="user", parts=user_parts)]
-
-            config.system_instruction = None
 
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
@@ -842,7 +833,6 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             ]
             
             config = create_generate_config(
-                system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
 
@@ -854,8 +844,6 @@ async def process_video_attachment(attachment, user_text, settings, history=None
                 new_input = history + [Content(role="user", parts=user_parts)]
             else:
                 new_input = [Content(role="user", parts=user_parts)]
-
-            config.system_instruction = None
 
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
@@ -947,7 +935,6 @@ async def process_video_attachments(attachments, user_text, settings, history=No
             user_parts.append(Part(text=prompt))
             
             config = create_generate_config(
-                system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
 
@@ -959,8 +946,6 @@ async def process_video_attachments(attachments, user_text, settings, history=No
                 new_input = history + [Content(role="user", parts=user_parts)]
             else:
                 new_input = [Content(role="user", parts=user_parts)]
-
-            config.system_instruction = None
 
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
@@ -1033,7 +1018,6 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
             ]
             
             config = create_generate_config(
-                system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
 
@@ -1045,8 +1029,6 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
                 new_input = history + [Content(role="user", parts=user_parts)]
             else:
                 new_input = [Content(role="user", parts=user_parts)]
-
-            config.system_instruction = None
 
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
@@ -1133,7 +1115,6 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
             user_parts.append(Part(text=prompt))
             
             config = create_generate_config(
-                system_instruction=effective_system_instruction,
                 thinking_level=thinking_level,
             )
 
@@ -1145,8 +1126,6 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
                 new_input = history + [Content(role="user", parts=user_parts)]
             else:
                 new_input = [Content(role="user", parts=user_parts)]
-
-            config.system_instruction = None
 
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
@@ -1202,7 +1181,6 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
         ]
         
         config = create_generate_config(
-            system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
         )
 
@@ -1214,8 +1192,6 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
             new_input = history + [Content(role="user", parts=user_parts)]
         else:
             new_input = [Content(role="user", parts=user_parts)]
-
-        config.system_instruction = None
 
         interaction = await execute_with_retry(
             lambda: api_key_manager.client.interactions.create(
@@ -1263,7 +1239,6 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         user_parts = [Part(text=prompt)]
         
         config = create_generate_config(
-            system_instruction=effective_system_instruction,
             thinking_level=thinking_level,
             tools=[url_context_tool],
         )
@@ -1276,8 +1251,6 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
             new_input = history + [Content(role="user", parts=user_parts)]
         else:
             new_input = [Content(role="user", parts=user_parts)]
-
-        config.system_instruction = None
 
         interaction = await execute_with_retry(
             lambda: api_key_manager.client.interactions.create(
