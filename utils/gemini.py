@@ -579,17 +579,15 @@ async def generate_response_with_text(contents, settings, user_display_name=None
         else:
             new_input = contents
 
+        config.system_instruction = None
+
         interaction = await execute_with_retry(
             lambda: api_key_manager.client.interactions.create(
                 model=settings.get("text_model", dynamic_config.default_text_model),
                 input=new_input,
                 generation_config=config,
-                **({
-                    "previous_interaction_id": prev_id,
-                    "system_instruction": effective_system_instruction,
-                } if prev_id else {
-                    "system_instruction": effective_system_instruction,
-                })
+                system_instruction=effective_system_instruction,
+                **({"previous_interaction_id": prev_id} if prev_id else {})
             )
         )
 
@@ -664,15 +662,15 @@ async def process_image_attachment(attachment, user_text, settings, history=None
             else:
                 new_input = [Content(role="user", parts=user_parts)]
 
+            config.system_instruction = None
+
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
                     input=new_input,
                     generation_config=config,
                     system_instruction=effective_system_instruction,
-                    **({
-                        "previous_interaction_id": prev_id,
-                    } if prev_id else {})
+                    **({"previous_interaction_id": prev_id} if prev_id else {})
                 )
             )
 
@@ -766,15 +764,15 @@ async def process_image_attachments(attachments, user_text, settings, history=No
             else:
                 new_input = [Content(role="user", parts=user_parts)]
 
+            config.system_instruction = None
+
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
                     input=new_input,
                     generation_config=config,
                     system_instruction=effective_system_instruction,
-                    **({
-                        "previous_interaction_id": prev_id,
-                    } if prev_id else {})
+                    **({"previous_interaction_id": prev_id} if prev_id else {})
                 )
             )
 
@@ -857,15 +855,15 @@ async def process_video_attachment(attachment, user_text, settings, history=None
             else:
                 new_input = [Content(role="user", parts=user_parts)]
 
+            config.system_instruction = None
+
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
                     input=new_input,
                     generation_config=config,
                     system_instruction=effective_system_instruction,
-                    **({
-                        "previous_interaction_id": prev_id,
-                    } if prev_id else {})
+                    **({"previous_interaction_id": prev_id} if prev_id else {})
                 )
             )
 
@@ -962,15 +960,15 @@ async def process_video_attachments(attachments, user_text, settings, history=No
             else:
                 new_input = [Content(role="user", parts=user_parts)]
 
+            config.system_instruction = None
+
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
                     input=new_input,
                     generation_config=config,
                     system_instruction=effective_system_instruction,
-                    **({
-                        "previous_interaction_id": prev_id,
-                    } if prev_id else {})
+                    **({"previous_interaction_id": prev_id} if prev_id else {})
                 )
             )
 
@@ -1048,15 +1046,15 @@ async def process_file_attachment(attachment, user_text, settings, history=None,
             else:
                 new_input = [Content(role="user", parts=user_parts)]
 
+            config.system_instruction = None
+
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
                     input=new_input,
                     generation_config=config,
                     system_instruction=effective_system_instruction,
-                    **({
-                        "previous_interaction_id": prev_id,
-                    } if prev_id else {})
+                    **({"previous_interaction_id": prev_id} if prev_id else {})
                 )
             )
 
@@ -1148,15 +1146,15 @@ async def process_file_attachments(attachments, user_text, settings, history=Non
             else:
                 new_input = [Content(role="user", parts=user_parts)]
 
+            config.system_instruction = None
+
             interaction = await execute_with_retry(
                 lambda: api_key_manager.client.interactions.create(
                     model=settings.get("text_model", dynamic_config.default_text_model),
                     input=new_input,
                     generation_config=config,
                     system_instruction=effective_system_instruction,
-                    **({
-                        "previous_interaction_id": prev_id,
-                    } if prev_id else {})
+                    **({"previous_interaction_id": prev_id} if prev_id else {})
                 )
             )
 
@@ -1217,15 +1215,15 @@ async def process_youtube_url(url, user_text, settings, history=None, user_displ
         else:
             new_input = [Content(role="user", parts=user_parts)]
 
+        config.system_instruction = None
+
         interaction = await execute_with_retry(
             lambda: api_key_manager.client.interactions.create(
                 model=settings.get("text_model", dynamic_config.default_text_model),
                 input=new_input,
                 generation_config=config,
                 system_instruction=effective_system_instruction,
-                **({
-                    "previous_interaction_id": prev_id,
-                } if prev_id else {})
+                **({"previous_interaction_id": prev_id} if prev_id else {})
             )
         )
 
@@ -1279,15 +1277,15 @@ async def process_website_url(url, user_text, settings, history=None, user_displ
         else:
             new_input = [Content(role="user", parts=user_parts)]
 
+        config.system_instruction = None
+
         interaction = await execute_with_retry(
             lambda: api_key_manager.client.interactions.create(
                 model=settings.get("text_model", dynamic_config.default_text_model),
                 input=new_input,
                 generation_config=config,
                 system_instruction=effective_system_instruction,
-                **({
-                    "previous_interaction_id": prev_id,
-                } if prev_id else {})
+                **({"previous_interaction_id": prev_id} if prev_id else {})
             )
         )
 

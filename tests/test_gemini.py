@@ -10,9 +10,13 @@ Tests cover:
 """
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 import sys
-import os
+
+# Save original modules to restore later in tearDownModule to prevent test pollution
+original_modules = {}
+for name in ["google", "google.genai", "google.genai.types", "aiohttp", "config", "utils.config_manager"]:
+    original_modules[name] = sys.modules.get(name)
 
 # ---------------------------------------------------------------------------
 # Stub out heavy dependencies before importing gemini module
@@ -66,10 +70,6 @@ config_mod.get_google_search_tool = MagicMock(return_value=None)
 config_mod.create_generate_config = MagicMock(return_value=MagicMock())
 sys.modules["config"] = config_mod
 
-# Stub utils.helpers
-helpers_mod = MagicMock()
-helpers_mod.convert_latex_to_discord = lambda t: t
-sys.modules["utils.helpers"] = helpers_mod
 
 # Stub utils.config_manager
 config_manager_mod = MagicMock()
@@ -86,7 +86,7 @@ config_manager_mod.dynamic_config = dynamic_cfg
 sys.modules["utils.config_manager"] = config_manager_mod
 
 # Now import the real module under test
-import utils.gemini as gemini_module
+import utils.gemini as gemini_module  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +233,34 @@ class TestGenerateResponseWithText(unittest.TestCase):
         self.assertIn("Exception", result)
         self.assertIn("network error", result)
 
+    def test_interactions_create_parameters(self):
+        """Verify client.interactions.create is called with the system_instruction at top level and None in config."""
+        mock_config = MagicMock()
+        mock_config.system_instruction = "You are a test bot."
+        config_mod.create_generate_config.return_value = mock_config
+
+        async def _mock_execute(func):
+            return func()
+
+        interaction = _make_interaction("Hi!")
+        gemini_module.api_key_manager.client.interactions.create.reset_mock()
+        gemini_module.api_key_manager.client.interactions.create.return_value = interaction
+
+        with patch.object(gemini_module, "execute_with_retry", side_effect=_mock_execute):
+            run(gemini_module.generate_response_with_text("Hello", self.settings))
+
+        # Check call arguments
+        create_mock = gemini_module.api_key_manager.client.interactions.create
+        create_mock.assert_called_once()
+        kwargs = create_mock.call_args.kwargs
+
+        # system_instruction must be at top level
+        self.assertEqual(kwargs.get("system_instruction"), "You are a test bot.")
+
+        # system_instruction must be None in generation_config
+        gen_config = kwargs.get("generation_config")
+        self.assertIsNone(gen_config.system_instruction)
+
 
 # ---------------------------------------------------------------------------
 # Tests: process_website_url
@@ -322,6 +350,15 @@ class TestHistorySynchronisation(unittest.TestCase):
         # Simulate regenerate: pop before re-calling
         gemini_module.pop_last_interaction_id(key)
         self.assertEqual(gemini_module.get_previous_interaction_id(key), "turn-1")
+
+
+def tearDownModule():
+    # Restore original modules to prevent test pollution
+    for name, value in original_modules.items():
+        if value is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = value
 
 
 if __name__ == "__main__":
